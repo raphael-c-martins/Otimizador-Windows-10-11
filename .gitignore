@@ -1,0 +1,15 @@
+# Ignore system and IDE files
+.vscode/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Ignore generated logs
+logs/
+*.log
+
+# Ignore old and temporary project files
+Antigos/
+TEMPORARIO/
