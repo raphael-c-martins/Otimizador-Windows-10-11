@@ -39,7 +39,7 @@ O **Otimizador Ultimate** foi rigorosamente projetado para limpar, otimizar e as
 
 ## 📜 Changelog e Histórico
 
-Para acompanhar todas as novidades, correções de bugs e evoluções de cada versão, consulte o documento oficial de **[Histórico de Atualizações (Changelog)](./Documentação/HISTORICO.md)**.
+Para acompanhar todas as novidades, correções de bugs e evoluções de cada versão, consulte o documento oficial de **[Histórico de Atualizações (CHANGELOG)](./Documentação/CHANGELOG.md)**.
 
 ---
 
