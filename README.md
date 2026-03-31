@@ -1,10 +1,11 @@
 <div align="center">
-  <h1>⚡ Otimizador Ultimate (Engine v12)</h1>
+  <h1>⚡ Otimizador Ultimate</h1>
   <p><i>Um script poliglota (Batch/PowerShell) focado em <b>Alta Disponibilidade (HA)</b> e <b>Cibersegurança Defensiva</b>.</i></p>
   
-  ![Windows 10/11](https://img.shields.io/badge/OS-Windows_10%20|%2011-blue?style=for-the-badge&logo=windows)
+  ![Windows 10/11](https://img.shields.io/badge/OS-Windows_10%20%7C%2011-blue?style=for-the-badge&logo=windows)
   ![PowerShell](https://img.shields.io/badge/Terminal-PowerShell%205.1+-5391FE?style=for-the-badge&logo=powershell)
   ![Batch](https://img.shields.io/badge/Engine-Batch_Script-4d4d4d?style=for-the-badge&logo=gnubash)
+  ![Version](https://img.shields.io/badge/Versão-v12.0-success?style=for-the-badge)
 </div>
 
 <br>
@@ -36,7 +37,13 @@ O **Otimizador Ultimate** foi rigorosamente projetado para limpar, otimizar e as
 
 ---
 
+## 📜 Changelog e Histórico
+
+Para acompanhar todas as novidades, correções de bugs e evoluções de cada versão, consulte o documento oficial de **[Histórico de Atualizações (Changelog)](./Documentação/HISTORICO.md)**.
+
+---
+
 <div align="center">
-  <p><i>"Projete sistemas com mecanismos de auto-recuperação e Brutalidade Operacional."</i></p>
+  <p><i>"Melhore uma máquina antiga e proteja sua privacidade."</i></p>
   <b>Desenvolvido por Raphael C. Martins</b>
 </div>
