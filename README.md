@@ -44,6 +44,6 @@ Para acompanhar todas as novidades, correções de bugs e evoluções de cada ve
 ---
 
 <div align="center">
-  <p><i>"Melhore uma máquina antiga e proteja sua privacidade."</i></p>
+  <p><i>"Melhore uma máquina antiga, tire o lixo que a Microsoft insere junto com o Windows e proteja sua privacidade."</i></p>
   <b>Desenvolvido por Raphael C. Martins</b>
 </div>
