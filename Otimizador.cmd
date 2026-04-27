@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 :: Pushd garante suporte a caminhos de Rede (UNC \\)
 pushd "%~dp0"
-TITLE // OTIMIZADOR ULTIMATE (Engine v12) //
+TITLE // OTIMIZADOR DE WINDOWS (Engine v12) //
 
 :: Export path safely to native variables avoiding ampersands issues
 set "batchPath=%~f0"
@@ -57,25 +57,30 @@ Start-Transcript -Path $LogPath -Append -Force | Out-Null
 
 # Define Variaveis Globais (High-Density UI Configs)
 $Esc = [char]27
-$C_G = "$Esc[38;2;160;160;160m" # Cinza
-$C_W = "$Esc[38;2;255;255;255m" # Branco
-$C_M = "$Esc[38;2;255;0;255m"   # Magenta
-$C_Y = "$Esc[38;2;255;255;0m"   # Amarelo
-$C_GN = "$Esc[38;2;0;255;0m"    # Verde Escuro (Premium)
-$C_R = "$Esc[38;2;255;50;50m"   # Vermelho
-$C_C = "$Esc[38;2;0;255;255m"   # Ciano
+$C_B  = "$Esc[38;2;52;152;219m"  # Azul (Principal)
+$C_C  = "$Esc[38;2;26;188;156m"  # Turquesa (Destaques)
+$C_G  = "$Esc[38;2;149;165;166m" # Cinza (Metadados)
+$C_W  = "$Esc[38;2;236;240;241m" # Branco (Texto)
+$C_GN = "$Esc[38;2;46;204;113m"  # Verde (Sucesso)
+$C_R  = "$Esc[38;2;231;76;60m"   # Vermelho (Erro)
+$C_Y  = "$Esc[38;2;241;196;15m"  # Amarelo (Aviso)
 $C_RST = "$Esc[0m"
 
 function Draw-Header {
     Clear-Host
     Write-Host ""
-    Write-Host "$C_C ================================================================$C_RST"
-    Write-Host "$C_W            // OTIMIZADOR ULTIMATE - HA & INFRA //            $C_RST"
-    Write-Host "$C_C ================================================================$C_RST"
-    Write-Host "$C_G  [INFO] Data: $(Get-Date -Format 'dd/MM/yyyy HH:mm')"
-    Write-Host "  [INFO] SysAdmin: $env:USERNAME | Target: $NomePC"
-    Write-Host "  [INFO] SO Nativo do Host: $((Get-CimInstance Win32_OperatingSystem).Caption)"
-    Write-Host "$C_C ================================================================$C_RST`n"
+    Write-Host "$C_B   ____  ____  _____ ___ __  __ ___ _____ _____ ____  $C_RST"
+    Write-Host "$C_B  / __ \|  _ \|_   _|_ _|  \/  |_ _|__  /| ____|  _ \ $C_RST"
+    Write-Host "$C_B | |  | | |_) | | |  | || |\/| || |  / / |  _| | |_) |$C_RST"
+    Write-Host "$C_B | |__| |  __/  | |  | || |  | || | / /_ | |___|  _ < $C_RST"
+    Write-Host "$C_B  \____/|_|     |_| |___|_|  |_|___/____||_____|_| \_\$C_RST"
+    Write-Host "$C_G  --------------------------------------------------------$C_RST"
+    Write-Host "$C_W            PROTOCOLO DE OTIMIZAÇÃO DE SISTEMA            $C_RST"
+    Write-Host "$C_G  --------------------------------------------------------$C_RST"
+    Write-Host "$C_G  [STATUS] Data: $(Get-Date -Format 'dd/MM/yyyy HH:mm')"
+    Write-Host "  [STATUS] SysAdmin: $env:USERNAME | Target: $NomePC"
+    Write-Host "  [STATUS] Host OS: $((Get-CimInstance Win32_OperatingSystem).Caption)"
+    Write-Host "$C_G  --------------------------------------------------------$C_RST`n"
 }
 
 function Executar-Item {
@@ -96,7 +101,7 @@ function Executar-Item {
 # --- MODULOS DE SISTEMA ---
 function Mod-Limpeza-Bloatware {
     param([bool]$Win11)
-    Write-Host "`n$C_Y >> FASE 1: REMOCAO DE BLOATWARE E APPS NATIVOS INUTEIS$C_RST"
+    Write-Host "`n$C_Y >> FASE 1: REMOÇÃO DE APLICAÇÕES REDUNDANTES E BLOATWARE$C_RST"
 
     # Apps que sempre sao bloqueados/removidos
     $Apps = @(
@@ -113,7 +118,7 @@ function Mod-Limpeza-Bloatware {
         "*HPJumpStarts*", "*HPPowerManager*", "*OutlookForWindows*", "*Copilot*", "*Windows.DevHome*"
     )
 
-    Executar-Item "Iniciando sub-rotina async de desinstalacao de APPS (Lote de $($Apps.Count))" {
+    Executar-Item "Iniciando processo de desinstalação (Lote de $($Apps.Count))" {
         $Count = 0
         $Total = $Apps.Count
         foreach ($App in $Apps) {
@@ -130,7 +135,7 @@ function Mod-Limpeza-Bloatware {
         }
     }
     
-    Executar-Item "Desinstalar OneDrive Massivamente (Hardkill)" {
+    Executar-Item "Remoção completa do OneDrive" {
         Stop-Process -Name "OneDrive" -Force -ErrorAction SilentlyContinue
         $Setup = "$env:systemroot\System32\OneDriveSetup.exe"
         if (!(Test-Path $Setup)) { $Setup = "$env:systemroot\SysWOW64\OneDriveSetup.exe" }
@@ -140,7 +145,7 @@ function Mod-Limpeza-Bloatware {
 
 function Mod-Privacidade {
     param([bool]$Win11)
-    Write-Host "`n$C_Y >> FASE 2: REDUCAO DE PROCESSOS DE FUNDO (TELEMETRIA E IA)$C_RST"
+    Write-Host "`n$C_Y >> FASE 2: OTIMIZAÇÃO DE PRIVACIDADE E SERVIÇOS DE FUNDO$C_RST"
 
     Executar-Item "Desativar Telemetria (DiagTrack)" {
         Stop-Service DiagTrack -Force -ErrorAction SilentlyContinue | Out-Null
@@ -215,7 +220,7 @@ function Mod-Performance {
     if ($Win11) {
 
 
-        Executar-Item "Restaurar Menu de Contexto Classico (Eficiencia O/1)" {
+        Executar-Item "Restaurar Menu de Contexto Clássico" {
             $Key = "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32"
             if(!(Test-Path $Key)){ New-Item -Path $Key -Force | Out-Null }
             Set-ItemProperty -Path $Key -Name "(default)" -Value ""
@@ -239,7 +244,7 @@ function Mod-Performance {
     }
 
     if ($NivelExtremo) {
-        Write-Host "$C_M    >> ALERTA EXTREMO: Executando Hard Mods...$C_RST"
+        Write-Host "$C_B    >> CONFIGURAÇÃO AVANÇADA: Aplicando modificações de baixo nível...$C_RST"
         Executar-Item "Matar Coleta Dinamica (Search Highlights e Web Search)" {
             $Search = "HKCU:\Software\Microsoft\Windows\CurrentVersion\SearchSettings"
             if(!(Test-Path $Search)){ New-Item -Path $Search -Force | Out-Null }
@@ -257,7 +262,7 @@ function Mod-Performance {
             Set-Service SysMain -StartupType Disabled -ErrorAction SilentlyContinue | Out-Null
         }
 
-        Executar-Item "Remocao Forcada do Microsoft Edge (Ignorando Block)" {
+        Executar-Item "Remoção profunda do Microsoft Edge" {
             $Key = "HKLM:\SOFTWARE\Microsoft\EdgeUpdateDev"
             if(!(Test-Path $Key)){ New-Item -Path $Key -Force | Out-Null }
             Set-ItemProperty -Path $Key -Name "AllowUninstall" -Value 1
@@ -287,29 +292,59 @@ function Finalizar-Sweep {
 
 
 # --- BOOTSTRAP: SELECAO ---
-Draw-Header
-
 $SO_Windows11 = $false
 $NivelExtremo = $false
 
-Write-Host "$C_GN>> PASSO 1: CONFIRME SEU SISTEMA OPERACIONAL$C_RST"
-Write-Host "$C_W [1] Windows 10$C_RST"
-Write-Host "$C_W [2] Windows 11$C_RST"
-$Opt1 = Read-Host "$C_C [?] Digite 1 ou 2$C_RST"
-if ($Opt1 -eq '2') { $SO_Windows11 = $true }
+# PASSO 1: Seleção de SO com Validação
+$ValidSO = $false
+while (-not $ValidSO) {
+    Draw-Header
+    Write-Host "$C_GN>> PASSO 1: CONFIRME SEU SISTEMA OPERACIONAL$C_RST`n"
+    Write-Host "$C_W [1] Windows 10$C_RST"
+    Write-Host "$C_W [2] Windows 11$C_RST`n"
+    $Opt1 = Read-Host "$C_C [?] Digite 1 ou 2$C_RST"
+    
+    if ($Opt1 -eq '1') {
+        $SO_Windows11 = $false
+        $ValidSO = $true
+    } elseif ($Opt1 -eq '2') {
+        $SO_Windows11 = $true
+        $ValidSO = $true
+    } else {
+        Write-Host "`n$C_R [!] Essa opção não existe, por favor se atente as opções disponíveis.$C_RST"
+        Start-Sleep -Seconds 2
+    }
+}
 
-Draw-Header
-Write-Host "$C_GN>> PASSO 2: SELECIONE O GRAU DE OTIMIZACAO$C_RST"
-Write-Host "$C_W [1] PADRAO (Otimizado / Leve)$C_RST"
-Write-Host "     - Foco em Performance: Remove bloatware, desativa XboxBar, Fast Startup e processos inúteis."
-Write-Host "$C_R [2] EXTREMO (Desempenho Maximo p/ Hardware Antigo)$C_RST"
-Write-Host "     - Tudo do Padrao + Destroi Edge, bloqueia Highlights, Indexacao (WSearch) e Sysmain."
-$Opt2 = Read-Host "$C_C [?] Digite 1 ou 2$C_RST"
-if ($Opt2 -eq '2') { $NivelExtremo = $true }
+# PASSO 2: Seleção de Grau com Validação
+$ValidOpt = $false
+while (-not $ValidOpt) {
+    Draw-Header
+    $LabelSO = if ($SO_Windows11) { "Windows 11" } else { "Windows 10" }
+    Write-Host "$C_C [ INFO ] SO Selecionado: $LabelSO$C_RST`n"
+
+    Write-Host "$C_GN>> PASSO 2: SELECIONE O GRAU DE OTIMIZAÇÃO$C_RST`n"
+    Write-Host "$C_W [1] PADRÃO (Otimizado / Leve)$C_RST"
+    Write-Host "     - Foco em Performance: Remove bloatware, desativa XboxBar, Fast Startup e processos inúteis.`n"
+    Write-Host "$C_R [2] EXTREMO (Desempenho Máximo p/ Hardware Antigo)$C_RST"
+    Write-Host "     - Tudo do Padrão + Remoção do Edge, bloqueio de Highlights, Indexação e Sysmain.`n"
+    $Opt2 = Read-Host "$C_C [?] Digite 1 ou 2$C_RST"
+
+    if ($Opt2 -eq '1') {
+        $NivelExtremo = $false
+        $ValidOpt = $true
+    } elseif ($Opt2 -eq '2') {
+        $NivelExtremo = $true
+        $ValidOpt = $true
+    } else {
+        Write-Host "`n$C_R [!] Essa opção não existe, por favor se atente as opções disponíveis.$C_RST"
+        Start-Sleep -Seconds 2
+    }
+}
 
 # INICIAR
 Draw-Header
-Write-Host "$C_W>> INICIANDO PROTOKOLO ANTI-GRAVITY ULTIMATE...$C_RST"
+Write-Host "$C_W>> INICIANDO OTIMIZAÇÃO DO SISTEMA...$C_RST"
 Mod-Limpeza-Bloatware -Win11 $SO_Windows11
 Mod-Privacidade -Win11 $SO_Windows11
 Mod-Performance -Win11 $SO_Windows11 -NivelExtremo $NivelExtremo
@@ -318,7 +353,7 @@ Finalizar-Sweep
 Stop-Transcript | Out-Null
 
 Write-Host "`n$C_GN[ SUCESSO ] $C_W Servicos e Engine finalizados com alta integridade.$C_RST"
-Write-Host "$C_C[ LOG     ] $C_G Cópia gravada fielmente em: $LogPath$C_RST"
+Write-Host "$C_C[ LOG     ] $C_G Relatório gravado em: $LogPath$C_RST"
 
 Write-Host "`n$C_Y >> Pressione ENTER para sair...$C_RST"
 Read-Host

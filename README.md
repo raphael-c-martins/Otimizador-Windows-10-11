@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>⚡ Otimizador Ultimate</h1>
-  <p><i>Um script poliglota (Batch/PowerShell) focado em <b>Alta Disponibilidade (HA)</b> e <b>Cibersegurança Defensiva</b>.</i></p>
+  <h1>⚡ Otimizador de Windows</h1>
+  <p><i>Script de automação (Batch/PowerShell) focado em <b>Alta Disponibilidade (HA)</b> e <b>Performance Infraestrutural</b>.</i></p>
   
   ![Windows 10/11](https://img.shields.io/badge/OS-Windows_10%20%7C%2011-blue?style=for-the-badge&logo=windows)
   ![PowerShell](https://img.shields.io/badge/Terminal-PowerShell%205.1+-5391FE?style=for-the-badge&logo=powershell)
@@ -10,7 +10,7 @@
 
 <br>
 
-O **Otimizador Ultimate** foi rigorosamente projetado para limpar, otimizar e assegurar a máxima performance e privacidade em ambientes corporativos e de alta produtividade (One-Hand Workflow). Diferente de canivetes suíços comuns, ele opera com **Brutalidade Operacional**, focando estritamente em alívio de Hardware e Segurança.
+O **Otimizador de Windows** foi rigorosamente projetado para limpar, otimizar e assegurar a máxima performance e privacidade em ambientes de alta produtividade. Desenvolvido sob princípios de engenharia e performance, ele foca estritamente na redução de uso de hardware e privacidade do usuário.
 
 ---
 
@@ -19,10 +19,10 @@ O **Otimizador Ultimate** foi rigorosamente projetado para limpar, otimizar e as
 - 💻 **Seleção Dinâmica de Sistema Operacional:** O script se adapta caso esteja executando no Windows 10 ou Windows 11.
 - ⚙️ **Dois Níveis de Refinamento (Bimodal):**
   - **1. PADRÃO (Otimizado/Leve):** Foco puro em performance diária. Mantém serviços de pesquisa e o navegador Microsoft Edge, mas remove todo o bloatware nativo e processos de fundo inúteis, otimizando CPU/RAM e desativando limitadores como Fast Startup e Xbox DVR.
-  - **2. EXTREMO (Desempenho p/ Hardware Antigo):** Otimiza hardware legado (HDD, pouca RAM) sacrificando funções convenientes como o _SysMain_ (Superfetch) e _Windows Search_ (indexação). Além disso, **efetua a remoção forçada (Brute Force) do Microsoft Edge**, impedindo-o de rodar em segundo plano.
-- 🛡️ **Cibersegurança e Privacidade (Anti-IA):** Vacina o sistema bloqueando a coleta de dados de IAs locais da Microsoft, como o Recall (Win11), ClickToDo, Windows Search AI e Windows Copilot (excluído massivamente). O app "Novo Outlook" também é removido ativamente.
-- 🎨 **Interface Gráfica Viva (TUI Premium):** O script roda nativamente no Terminal/CMD provendo uma interface lindíssima com progress bars e highlights utilizando códigos de cor ANSI *truecolor*, mantendo o usuário informado em tempo real sobre a integridade de cada operação.
-- 📝 **Log Nativo de Auditoria:** Cada execução gera um log documentado com o "Target" (nome da máquina), data, técnico de operação e **Timestamps em tempo real (HH:mm:ss)** para todas as verificações do console. Fica salvo automaticamente de forma cega na pasta local `/logs/`.
+  - **2. EXTREMO (Desempenho p/ Hardware Antigo):** Otimiza hardware legado (HDD, baixa densidade de RAM) desativando serviços como o _SysMain_ (Superfetch) e _Windows Search_ (indexação). Além disso, realiza a **remoção profunda do Microsoft Edge**, impedindo sua execução em segundo plano.
+- 🛡️ **Privacidade e Redução de Telemetria:** Fortalece o sistema bloqueando a coleta de dados de serviços de IA locais da Microsoft, como o Recall (Win11), ClickToDo, Windows Search AI e Microsoft Copilot. Aplicações redundantes como o "Novo Outlook" também são removidas.
+- 🎨 **Interface TUI (Terminal User Interface):** Interface otimizada no terminal com feedback em tempo real, utilizando cores ANSI para visualização clara do status de cada operação.
+- 📝 **Logs de Auditoria:** Cada execução gera um relatório detalhado com informações do host, timestamps dinâmicos e resultados de cada rotina, salvos automaticamente na pasta `/logs/`.
 
 ---
 
@@ -44,6 +44,6 @@ Para acompanhar todas as novidades, correções de bugs e evoluções de cada ve
 ---
 
 <div align="center">
-  <p><i>"Melhore uma máquina antiga, tire o lixo que a Microsoft insere junto com o Windows e proteja sua privacidade."</i></p>
+  <p><i>"Maximize a eficiência do seu hardware, remova componentes redundantes e proteja sua privacidade."</i></p>
   <b>Desenvolvido por Raphael C. Martins</b>
 </div>
