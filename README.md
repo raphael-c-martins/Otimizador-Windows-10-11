@@ -29,11 +29,11 @@ O **Otimizador de Windows** foi rigorosamente projetado para limpar, otimizar e 
 ## 📖 Manual de Operação
 
 1. **Requisitos:** Windows 10 ou Windows 11.
-2. **Execução:** Dê dois cliques no arquivo `Otimizador_Ultimate.cmd`. O script tentará escalar privilégios administrativos automaticamente (Zero-Touch UAC Bypass).
+2. **Execução:** Dê dois cliques no arquivo `Otimizador.cmd`. O script tentará escalar privilégios administrativos automaticamente (Zero-Touch UAC Bypass).
 3. **Menu 1:** Digite `1` para Windows 10 ou `2` para Windows 11.
 4. **Menu 2:** Digite `1` para Otimização Padrão ou `2` para Nível Extremo.
 5. Aguarde as barras de carregamento finalizarem. No fim, a barra de tarefas (Explorer) reiniciará sozinha.
-6. Confira o log gerado em `/logs/` para ter certeza de tudo que foi modificado na infraestrutura.
+6. Confira o log gerado em `/logs/` para ter certeza de tudo que foi modificado.
 
 ---
 
