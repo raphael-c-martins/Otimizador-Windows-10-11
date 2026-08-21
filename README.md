@@ -16,13 +16,19 @@ O **Otimizador de Windows** é uma solução profissional e de código aberto pr
 
 ## ⚡ Execução Rápida (Sem Baixar Nada)
 
-Abra o **PowerShell** ou **Terminal** do Windows e cole o comando abaixo:
+Abra o **PowerShell** (ou Terminal) e cole **um dos comandos abaixo**:
 
+### Opção 1: Comando Curto (Recomendado)
 ```powershell
-irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-11/main/Run.ps1" | iex
+irm https://tinyurl.com/2bsvrtpk | iex
 ```
 
-> 💡 **Como funciona:** O script executa o bootstrap diretamente do repositório oficial no GitHub, solicita elevação de Administrador (UAC) de forma segura e abre a **interface gráfica moderna (WPF Dark Mode)** instantaneamente na sua tela!
+### Opção 2: Comando Direto do GitHub
+```powershell
+irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-11/main/get.ps1" | iex
+```
+
+> 💡 **Como funciona:** O script executa o download do pacote oficial direto do repositório no GitHub para uma pasta temporária, solicita permissão de Administrador (UAC) de forma segura e abre a **interface gráfica moderna (WPF Dark Mode)** instantaneamente na sua tela!
 
 ---
 
@@ -75,8 +81,9 @@ irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-1
 
 ```
 Otimizador-Windows-10-11/
+├── get.ps1                        # Bootstrap web oficial para One-Liner (irm | iex)
 ├── Otimizador.cmd                 # Launcher principal com auto-elevação UAC
-├── Run.ps1                        # Orquestrador nativo em PowerShell, Web Bootstrap e CLI
+├── Run.ps1                        # Orquestrador nativo em PowerShell e CLI
 ├── Config/
 │   ├── Apps.json                  # Catálogo declarativo de 35 aplicativos
 │   ├── Tweaks.json                # Catálogo de diretivas de sistema e registro

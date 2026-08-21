@@ -2,8 +2,8 @@
 .SYNOPSIS
     Orquestrador Principal da Engine de Otimização e Debloat do Windows (v13.0).
 .DESCRIPTION
-    Ponto de entrada nativo em PowerShell com suporte a execução remota (One-Liner irm | iex),
-    inicialização padrão na Janela Gráfica (GUI WPF) e modo Terminal interativo (-CLI).
+    Ponto de entrada nativo em PowerShell com inicialização padrão na Janela Gráfica (GUI WPF)
+    e suporte a modo Terminal interativo (-CLI) e parâmetros de linha de comando.
 #>
 
 [CmdletBinding()]
@@ -24,55 +24,9 @@ try {
 } catch {}
 
 $ErrorActionPreference = "Continue"
-
-# ==============================================================================
-# 0. BOOTSTRAP REMOTO (SUPORTE A ONE-LINER "irm ... | iex" DIRETO DO GITHUB)
-# ==============================================================================
-$CurrentScriptPath = $MyInvocation.MyCommand.Path
-$IsRunningFromWeb = [string]::IsNullOrWhiteSpace($CurrentScriptPath) -or !(Test-Path "$CurrentScriptPath")
-
-if ($IsRunningFromWeb -or !(Test-Path "$PSScriptRoot\src\UI\MainWindowGUI.ps1")) {
-    # 0.1 Verificar privilégios de Administrador
-    $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $IsAdmin) {
-        Write-Host " [!] Solicitando permissão de Administrador..." -ForegroundColor Cyan
-        $WebCommand = "irm 'https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-11/main/Run.ps1' | iex"
-        Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$WebCommand`"" -Verb RunAs
-        exit 0
-    }
-
-    # 0.2 Download e extração do repositório em %TEMP%
-    Write-Host "`n [..] Baixando suíte Otimizador de Windows do GitHub..." -ForegroundColor Cyan
-    $ZipUrl = "https://github.com/raphael-c-martins/Otimizador-Windows-10-11/archive/refs/heads/main.zip"
-    $TempZip = "$env:TEMP\Otimizador-Windows-Main.zip"
-    $TempExtract = "$env:TEMP\Otimizador-Windows-Temp"
-
-    try {
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-RestMethod -Uri $ZipUrl -OutFile $TempZip
-        if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue }
-        Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
-        Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-
-        $LocalRootDir = "$TempExtract\Otimizador-Windows-10-11-main"
-        if (!(Test-Path $LocalRootDir)) {
-            $LocalRootDir = (Get-ChildItem -Path $TempExtract -Directory | Select-Object -First 1).FullName
-        }
-
-        # Repassa todos os parâmetros originais
-        & "$LocalRootDir\Run.ps1" @PSBoundParameters
-        exit 0
-    } catch {
-        Write-Error "Falha ao baixar o repositório do GitHub: $($_.Exception.Message)"
-        exit 1
-    }
-}
-
-# ==============================================================================
-# 1. EXECUÇÃO LOCAL (CARREGAMENTO DOS MÓDULOS)
-# ==============================================================================
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
+# 1. Carregar Módulos do Core, UI e Threading
 . "$ScriptDir\src\Core\ThreadingManager.ps1"
 . "$ScriptDir\src\UI\ConsoleTUI.ps1"
 . "$ScriptDir\src\UI\AppSelectionModal.ps1"
