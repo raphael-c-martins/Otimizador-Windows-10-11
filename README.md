@@ -14,6 +14,18 @@ O **Otimizador de Windows** é uma solução profissional e de código aberto pr
 
 ---
 
+## ⚡ Execução Rápida (Sem Baixar Nada)
+
+Abra o **PowerShell** ou **Terminal** do Windows e cole o comando abaixo:
+
+```powershell
+irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-11/main/Run.ps1" | iex
+```
+
+> 💡 **Como funciona:** O script executa o bootstrap diretamente do repositório oficial no GitHub, solicita elevação de Administrador (UAC) de forma segura e abre a **interface gráfica moderna (WPF Dark Mode)** instantaneamente na sua tela!
+
+---
+
 ## ✨ Funcionalidades Principais
 
 - 🎨 **Interface Gráfica Completa (WPF Dark Mode):** Janela moderna no estilo Fluent Design com menu lateral (Sidebar), seleção de perfis rápidos com 1 clique, busca em tempo real e visualização de logs ao vivo.
@@ -32,23 +44,20 @@ O **Otimizador de Windows** é uma solução profissional e de código aberto pr
 | Perfil | Foco Principal | Aplicativos Removidos | Xbox & Jogos | Edge & Serviços Legados |
 | :--- | :--- | :--- | :--- | :--- |
 | **Padrão** | Uso Diário / Equilibrado | Bloatware comum e patrocinados | Preserva Xbox / Desativa GameDVR | Mantém Edge e WSearch |
-| **Gamer** | Jogos & Máximo FPS | Bloatware e utilitários irrelevantes | Preserva Game Pass / Desativa GameDVR | Mantém Edge e WSearch |
+| **Gamer** | Jogos & Máximo FPS | Bloatware e utilitários irrelevantes | Preserva Game Pass, Clipchamp e Player | Mantém Edge e WSearch |
 | **Corporativo** | Trabalho & Produtividade | Jogos, redes sociais e telemetria | Remove ecossistema de jogos | Preserva Teams e Office |
 | **Extremo** | Hardware Antigo / HDDs | Remoção completa de quase todos apps | Remove Xbox + Protocol Fix | Desativa SysMain e WSearch + Remove Edge |
 
 ---
 
-## 🚀 Como Executar
+## 🚀 Métodos Alternativos de Execução
 
-### Método 1: Duplo Clique (Interface Gráfica Moderna)
-1. Dê duplo clique no arquivo **`Otimizador.cmd`**.
-2. Aceite o prompt de confirmação de Administrador (UAC).
+### Método 2: Duplo Clique (Offline / Local)
+1. Baixe o repositório ou o arquivo `.zip` da [última release](https://github.com/raphael-c-martins/Otimizador-Windows-10-11/releases).
+2. Dê duplo clique no arquivo **`Otimizador.cmd`**.
 3. A janela gráfica moderna em Dark Mode abrirá na sua área de trabalho.
-4. Escolha o perfil desejado na primeira aba e clique em **`⚡ EXECUTAR OTIMIZAÇÃO`**.
 
-### Método 2: Modo Terminal (CLI Interativo ou Automatizado)
-Abra o **PowerShell como Administrador** na pasta do projeto e execute:
-
+### Método 3: Linha de Comando (CLI para SysAdmins)
 ```powershell
 # Execução no modo Terminal TUI
 .\Run.ps1 -CLI
@@ -67,7 +76,7 @@ Abra o **PowerShell como Administrador** na pasta do projeto e execute:
 ```
 Otimizador-Windows-10-11/
 ├── Otimizador.cmd                 # Launcher principal com auto-elevação UAC
-├── Run.ps1                        # Orquestrador nativo em PowerShell e CLI
+├── Run.ps1                        # Orquestrador nativo em PowerShell, Web Bootstrap e CLI
 ├── Config/
 │   ├── Apps.json                  # Catálogo declarativo de 35 aplicativos
 │   ├── Tweaks.json                # Catálogo de diretivas de sistema e registro
