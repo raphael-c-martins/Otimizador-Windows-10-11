@@ -1,0 +1,117 @@
+﻿{
+  "Version": "1.0",
+  "Categories": [
+    { "Id": "Privacy", "Name": "Privacidade & Telemetria" },
+    { "Id": "AI", "Name": "Inteligência Artificial (Recall & Copilot)" },
+    { "Id": "Gaming", "Name": "Jogos & Xbox Protocol Fix" },
+    { "Id": "Performance", "Name": "Performance de Sistema & I/O" },
+    { "Id": "UI", "Name": "Interface do Usuário & Explorer" }
+  ],
+  "Tweaks": [
+    {
+      "Id": "DisableTelemetry",
+      "Category": "Privacy",
+      "Name": "Desativar Telemetria e Diagnósticos (DiagTrack)",
+      "Description": "Interrompe e desativa o serviço DiagTrack e limita o envio de relatórios de telemetria.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableActivityHistory",
+      "Category": "Privacy",
+      "Name": "Desativar Histórico de Atividades",
+      "Description": "Impede o rastreamento e envio do histórico de uso de aplicativos.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableWindowsSuggestions",
+      "Category": "Privacy",
+      "Name": "Desativar Sugestões e Anúncios do Windows",
+      "Description": "Remove anúncios na tela de bloqueio, menu Iniciar e aplicativo de Configurações.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableRecallAndAI",
+      "Category": "AI",
+      "Name": "Bloquear Windows Recall, Click-to-Do e Search AI",
+      "Description": "Desativa captura de tela contínua e processamento de IA local do Windows 11 24H2+.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableCopilot",
+      "Category": "AI",
+      "Name": "Desativar Microsoft Copilot no Sistema e Barra de Tarefas",
+      "Description": "Remove o botão da barra de tarefas e desativa as diretivas do Copilot.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableEdgeBackgroundAndAds",
+      "Category": "Privacy",
+      "Name": "Desativar Execução em Segundo Plano e Anúncios do Edge",
+      "Description": "Impede o Edge de inicializar com o Windows e consumir memória em segundo plano.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableGameDVR",
+      "Category": "Gaming",
+      "Name": "Desativar Gravação em Segundo Plano (GameDVR)",
+      "Description": "Libera recursos de CPU/GPU eliminando a gravação de tela em segundo plano enquanto joga.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "FixGameBarProtocols",
+      "Category": "Gaming",
+      "Name": "Neutralizar Protocolos ms-gamingoverlay / ms-gamebar",
+      "Description": "Redireciona chamadas de protocolo para systray.exe, evitando popups de erro ao desinstalar Xbox Game Bar.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "RestoreClassicContextMenu",
+      "Category": "UI",
+      "Name": "Restaurar Menu de Contexto Clássico (Windows 11)",
+      "Description": "Traz de volta o menu de clique direito completo e ágil sem precisar clicar em 'Mostrar mais opções'.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "ShowFileExtensions",
+      "Category": "UI",
+      "Name": "Exibir Extensões de Arquivos Conhecidos",
+      "Description": "Melhora a segurança e usabilidade exibindo extensões como .exe, .bat, .pdf no Explorer.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableFastStartup",
+      "Category": "Performance",
+      "Name": "Desativar Inicialização Rápida (Fast Startup)",
+      "Description": "Evita corrupção de drivers, libera espaço de hibernação e garante desligamento completo.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "InjectUltimatePerformancePlan",
+      "Category": "Performance",
+      "Name": "Ativar Plano de Energia Ultimate Performance",
+      "Description": "Desbloqueia e ativa o esquema de energia de máxima performance sem limitação de núcleos.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "OptimizeVisualEffects",
+      "Category": "Performance",
+      "Name": "Otimizar Efeitos Visuais (Sem quebrar fontes)",
+      "Description": "Desativa sombras lentas e animações mantendo renderização de fontes suave (ClearType).",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableSysMainAndWSearch",
+      "Category": "Performance",
+      "Name": "Desativar SysMain (Superfetch) e Windows Search (Modo Extremo)",
+      "Description": "Reduz o uso de disco para 0% em HDDs mecânicos e processadores antigos.",
+      "SelectedByDefault": false
+    },
+    {
+      "Id": "ForceUninstallEdge",
+      "Category": "Performance",
+      "Name": "Remover Profundamente o Microsoft Edge (Modo Extremo)",
+      "Description": "Desinstalação forçada do navegador Edge com limpeza de stubs e atalhos.",
+      "SelectedByDefault": false
+    }
+  ]
+}

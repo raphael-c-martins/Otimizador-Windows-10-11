@@ -1,0 +1,22 @@
+﻿{
+  "PresetName": "Extremo",
+  "DisplayName": "Extremo (Máxima Performance / Hardware Legado)",
+  "Description": "Otimização profunda para computadores com poucos recursos de RAM ou HD mecânico. Remove quase todo bloatware, desativa SysMain/WSearch e remove o Microsoft Edge.",
+  "RemoveApps": [
+    "XboxGamingOverlay", "XboxApp", "MicrosoftCopilot", "WindowsDevHome", "OutlookForWindows",
+    "MSTeamsLegacy", "SkypeApp", "Clipchamp", "ZuneVideo", "ZuneMusic", "WindowsSoundRecorder",
+    "WindowsMaps", "WindowsFeedbackHub", "Cortana", "BingNews", "BingWeather", "BingFinance",
+    "BingSports", "MicrosoftSolitaireCollection", "YourPhone", "People", "MicrosoftFamily",
+    "QuickAssist", "MicrosoftOfficeHub", "MixedRealityPortal", "Print3D", "Spotify", "TikTok",
+    "Instagram", "Facebook", "DisneyPlus", "Netflix", "HPAidApps"
+  ],
+  "PreserveApps": [
+    "MicrosoftStickyNotes"
+  ],
+  "ApplyTweaks": [
+    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI",
+    "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "FixGameBarProtocols",
+    "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan",
+    "OptimizeVisualEffects", "DisableSysMainAndWSearch", "ForceUninstallEdge"
+  ]
+}

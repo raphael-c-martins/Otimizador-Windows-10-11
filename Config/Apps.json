@@ -1,0 +1,355 @@
+﻿{
+  "Version": "1.0",
+  "Apps": [
+    {
+      "Id": "XboxGamingOverlay",
+      "FriendlyName": "Xbox Game Bar & Gaming Overlay",
+      "PackageName": "*XboxGamingOverlay*",
+      "WinGetId": "",
+      "Category": "Gaming",
+      "Description": "Sobreposição de jogos, atalhos de controle (Win+G) e gravação de tela.",
+      "SelectedByDefault": false,
+      "Recommendation": "caution"
+    },
+    {
+      "Id": "XboxApp",
+      "FriendlyName": "Xbox App (Game Pass)",
+      "PackageName": "*XboxApp*",
+      "WinGetId": "Microsoft.GamingApp",
+      "Category": "Gaming",
+      "Description": "Aplicativo principal do Xbox para PC e gerenciador do Game Pass.",
+      "SelectedByDefault": false,
+      "Recommendation": "caution"
+    },
+    {
+      "Id": "MicrosoftCopilot",
+      "FriendlyName": "Microsoft Copilot",
+      "PackageName": "*Copilot*",
+      "WinGetId": "XP9CXNGPPJ97XX",
+      "Category": "AI",
+      "Description": "Assistente de Inteligência Artificial integrado ao Windows.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "WindowsDevHome",
+      "FriendlyName": "Dev Home",
+      "PackageName": "*Windows.DevHome*",
+      "WinGetId": "Microsoft.DevHome",
+      "Category": "Productivity",
+      "Description": "Painel de desenvolvimento da Microsoft com widgets e monitoramento.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "OutlookForWindows",
+      "FriendlyName": "Novo Outlook (Web Wrapper)",
+      "PackageName": "*OutlookForWindows*",
+      "WinGetId": "Microsoft.OutlookForWindows",
+      "Category": "Productivity",
+      "Description": "Novo cliente de e-mail baseado em web da Microsoft.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "MicrosoftTeams",
+      "FriendlyName": "Microsoft Teams",
+      "PackageName": "*MicrosoftTeams*",
+      "WinGetId": "Microsoft.Teams",
+      "Category": "Communication",
+      "Description": "Plataforma de mensagens e chamadas da Microsoft.",
+      "SelectedByDefault": false,
+      "Recommendation": "caution"
+    },
+    {
+      "Id": "MSTeamsLegacy",
+      "FriendlyName": "Microsoft Teams (Legacy/Home)",
+      "PackageName": "*MSTeams*",
+      "WinGetId": "",
+      "Category": "Communication",
+      "Description": "Versão pré-instalada do Teams para contas pessoais.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "SkypeApp",
+      "FriendlyName": "Skype",
+      "PackageName": "*SkypeApp*",
+      "WinGetId": "Microsoft.Skype",
+      "Category": "Communication",
+      "Description": "Aplicativo de chamadas e mensagens Skype.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "Clipchamp",
+      "FriendlyName": "Clipchamp Video Editor",
+      "PackageName": "*Clipchamp*",
+      "WinGetId": "Clipchamp.Clipchamp",
+      "Category": "Media",
+      "Description": "Editor de vídeo nativo da Microsoft.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "ZuneVideo",
+      "FriendlyName": "Filmes e TV (Zune Video)",
+      "PackageName": "*ZuneVideo*",
+      "WinGetId": "",
+      "Category": "Media",
+      "Description": "Reprodutor de vídeo clássico UWP da Microsoft.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "ZuneMusic",
+      "FriendlyName": "Media Player / Groove Music",
+      "PackageName": "*ZuneMusic*",
+      "WinGetId": "",
+      "Category": "Media",
+      "Description": "Reprodutor de música nativo do Windows.",
+      "SelectedByDefault": false,
+      "Recommendation": "caution"
+    },
+    {
+      "Id": "MicrosoftStickyNotes",
+      "FriendlyName": "Notas Autoadesivas (Sticky Notes)",
+      "PackageName": "*MicrosoftStickyNotes*",
+      "WinGetId": "",
+      "Category": "Productivity",
+      "Description": "Anotações rápidas em post-it na área de trabalho.",
+      "SelectedByDefault": false,
+      "Recommendation": "caution"
+    },
+    {
+      "Id": "WindowsSoundRecorder",
+      "FriendlyName": "Gravador de Voz",
+      "PackageName": "*WindowsSoundRecorder*",
+      "WinGetId": "",
+      "Category": "Media",
+      "Description": "Gravador de áudio nativo do Windows.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "WindowsMaps",
+      "FriendlyName": "Mapas do Windows",
+      "PackageName": "*WindowsMaps*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Aplicativo de mapas e navegação da Microsoft.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "WindowsFeedbackHub",
+      "FriendlyName": "Hub de Comentários (Feedback Hub)",
+      "PackageName": "*WindowsFeedbackHub*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Ferramenta para envio de telemetria e feedback à Microsoft.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "Cortana",
+      "FriendlyName": "Cortana (Descontinuada)",
+      "PackageName": "*Microsoft.549981C3F5F10*",
+      "WinGetId": "",
+      "Category": "AI",
+      "Description": "Assistente de voz legada da Microsoft.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "BingNews",
+      "FriendlyName": "Microsoft Notícias / Start",
+      "PackageName": "*BingNews*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Agregador de notícias e artigos do Bing.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "BingWeather",
+      "FriendlyName": "Previsão do Tempo (Bing Weather)",
+      "PackageName": "*BingWeather*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Aplicativo de clima e previsão meteorológica.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "BingFinance",
+      "FriendlyName": "Bing Finanças",
+      "PackageName": "*BingFinance*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Notícias do mercado financeiro e cotações.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "BingSports",
+      "FriendlyName": "Bing Esportes",
+      "PackageName": "*BingSports*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Notícias e resultados de jogos esportivos.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "MicrosoftSolitaireCollection",
+      "FriendlyName": "Microsoft Solitaire Collection",
+      "PackageName": "*MicrosoftSolitaireCollection*",
+      "WinGetId": "",
+      "Category": "Gaming",
+      "Description": "Jogos de cartas clássicos com anúncios embutidos.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "YourPhone",
+      "FriendlyName": "Vínculo com Celular (Phone Link)",
+      "PackageName": "*YourPhone*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Sincronização com smartphones Android e iOS.",
+      "SelectedByDefault": false,
+      "Recommendation": "caution"
+    },
+    {
+      "Id": "People",
+      "FriendlyName": "Pessoas (Microsoft People)",
+      "PackageName": "*People*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Lista de contatos integrada do Windows.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "MicrosoftFamily",
+      "FriendlyName": "Proteção para a Família (Microsoft Family)",
+      "PackageName": "*MicrosoftFamily*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Controle parental e monitoramento familiar.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "QuickAssist",
+      "FriendlyName": "Assistência Rápida (Quick Assist)",
+      "PackageName": "*QuickAssist*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Ferramenta de acesso remoto da Microsoft.",
+      "SelectedByDefault": false,
+      "Recommendation": "caution"
+    },
+    {
+      "Id": "MicrosoftOfficeHub",
+      "FriendlyName": "Microsoft 365 (Office Hub)",
+      "PackageName": "*MicrosoftOfficeHub*",
+      "WinGetId": "",
+      "Category": "Productivity",
+      "Description": "Atalho e anúncios do pacote Microsoft 365.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "MixedRealityPortal",
+      "FriendlyName": "Portal de Realidade Misturada",
+      "PackageName": "*MixedReality.Portal*",
+      "WinGetId": "",
+      "Category": "Utilities",
+      "Description": "Portal para headsets VR/AR da Microsoft (Descontinuado).",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "Print3D",
+      "FriendlyName": "Print 3D & 3D Builder",
+      "PackageName": "*Print3D*",
+      "WinGetId": "",
+      "Category": "Media",
+      "Description": "Ferramenta de visualização e impressão em 3D.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "Spotify",
+      "FriendlyName": "Spotify (Pré-instalado)",
+      "PackageName": "*Spotify*",
+      "WinGetId": "Spotify.Spotify",
+      "Category": "ThirdPartyBloat",
+      "Description": "Aplicativo de streaming de música.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "TikTok",
+      "FriendlyName": "TikTok (Atalho OEM)",
+      "PackageName": "*TikTok*",
+      "WinGetId": "",
+      "Category": "ThirdPartyBloat",
+      "Description": "Aplicativo pré-instalado por fabricantes.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "Instagram",
+      "FriendlyName": "Instagram (Atalho OEM)",
+      "PackageName": "*Instagram*",
+      "WinGetId": "",
+      "Category": "ThirdPartyBloat",
+      "Description": "Rede social pré-instalada por fabricantes.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "Facebook",
+      "FriendlyName": "Facebook (Atalho OEM)",
+      "PackageName": "*Facebook*",
+      "WinGetId": "",
+      "Category": "ThirdPartyBloat",
+      "Description": "Rede social pré-instalada.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "DisneyPlus",
+      "FriendlyName": "Disney+ (Atalho OEM)",
+      "PackageName": "*Disney*",
+      "WinGetId": "",
+      "Category": "ThirdPartyBloat",
+      "Description": "Serviço de streaming de filmes e séries.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "Netflix",
+      "FriendlyName": "Netflix (Atalho OEM)",
+      "PackageName": "*Netflix*",
+      "WinGetId": "",
+      "Category": "ThirdPartyBloat",
+      "Description": "Serviço de streaming de filmes e séries.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    },
+    {
+      "Id": "HPAidApps",
+      "FriendlyName": "HP OEM Bloatware Suite",
+      "PackageName": "*HPJumpStarts*,*HPPowerManager*,*HPSupportAssistant*",
+      "WinGetId": "",
+      "Category": "ThirdPartyBloat",
+      "Description": "Aplicativos proprietários e telemetria da HP.",
+      "SelectedByDefault": true,
+      "Recommendation": "safe"
+    }
+  ]
+}

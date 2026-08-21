@@ -1,0 +1,20 @@
+﻿{
+  "PresetName": "Padrao",
+  "DisplayName": "Padrão (Equilibrado / Uso Diário)",
+  "Description": "Foco em alívio de memória e privacidade diária. Remove bloatware comum, desativa telemetria e otimiza a UI mantendo serviços essenciais e navegadores intactos.",
+  "RemoveApps": [
+    "MicrosoftCopilot", "WindowsDevHome", "OutlookForWindows", "MSTeamsLegacy", "SkypeApp",
+    "Clipchamp", "ZuneVideo", "WindowsMaps", "WindowsFeedbackHub", "Cortana", "BingNews",
+    "BingWeather", "BingFinance", "BingSports", "MicrosoftSolitaireCollection", "People",
+    "MicrosoftFamily", "MicrosoftOfficeHub", "MixedRealityPortal", "Print3D", "Spotify",
+    "TikTok", "Instagram", "Facebook", "DisneyPlus", "Netflix", "HPAidApps"
+  ],
+  "PreserveApps": [
+    "XboxGamingOverlay", "XboxApp", "MicrosoftTeams", "MicrosoftStickyNotes", "ZuneMusic", "WindowsSoundRecorder", "YourPhone", "QuickAssist"
+  ],
+  "ApplyTweaks": [
+    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI",
+    "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "RestoreClassicContextMenu",
+    "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan", "OptimizeVisualEffects"
+  ]
+}

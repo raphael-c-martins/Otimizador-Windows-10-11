@@ -1,0 +1,19 @@
+﻿{
+  "PresetName": "Gamer",
+  "DisplayName": "Gamer (Otimizado p/ Jogos & FPS)",
+  "Description": "Projetado para jogadores de PC. Mantém os serviços essenciais do Xbox, Game Pass, player de mídia e editor de clipes funcionando, desativa o GameDVR que reduz FPS e aplica o Ultimate Performance Plan.",
+  "RemoveApps": [
+    "MicrosoftCopilot", "WindowsDevHome", "OutlookForWindows", "MSTeamsLegacy", "SkypeApp",
+    "WindowsMaps", "WindowsFeedbackHub", "Cortana", "BingNews", "BingWeather", "BingFinance",
+    "BingSports", "People", "MicrosoftFamily", "MicrosoftOfficeHub", "MixedRealityPortal",
+    "Print3D", "TikTok", "Instagram", "Facebook", "DisneyPlus", "Netflix", "HPAidApps"
+  ],
+  "PreserveApps": [
+    "XboxGamingOverlay", "XboxApp", "Clipchamp", "ZuneVideo", "Spotify", "MicrosoftStickyNotes", "ZuneMusic"
+  ],
+  "ApplyTweaks": [
+    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI",
+    "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "RestoreClassicContextMenu",
+    "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan", "OptimizeVisualEffects"
+  ]
+}

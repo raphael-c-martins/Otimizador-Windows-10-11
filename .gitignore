@@ -6,10 +6,18 @@
 *.userosscache
 *.sln.docstates
 
+# Credentials and secrets
+.env
+.env.*
+*.key
+*.pem
+
 # Ignore generated logs
 logs/
 *.log
 
-# Ignore old and temporary project files
+# Ignore temporary and transition files
 Antigos/
 TEMPORARIO/
+*.tmp
+*.temp
