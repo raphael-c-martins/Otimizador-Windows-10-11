@@ -14,8 +14,12 @@ Documento de rastreamento local de ideias, melhorias e sugestões em backlog par
 - [x] **[ID-007] [2026-08-21]**: **Catálogo Declarativo JSON**: Separar a lista de apps e diretivas em arquivos JSON estruturados (`Apps.json`, `Tweaks.json`) com níveis de recomendação (`seguro`, `avançado`). *(Concluído na v13.0)*
 - [x] **[ID-008] [2026-08-21]**: **Bloqueio de IA Local Avançada (Win 11 24H2+)**: Desativar Windows Recall, Click-to-Do, serviço `WSAIFabricSvc`, AI no Notepad e Paint. *(Concluído na v13.0)*
 - [x] **[ID-009] [2026-08-21]**: **Modo CLI com Presets para SysAdmins**: Adicionar suporte a parâmetros de linha de comando (`-Preset Gamer`, `-Preset Corporativo`, `-Silent`). *(Concluído na v13.0)*
-- [ ] **[ID-010] [2026-08-21]**: **Exportação e Importação de Perfis Customizados**: Permitir que técnicos salvem presets próprios em arquivos `.json` e os carreguem em outras máquinas via linha de comando (`-Preset C:\Custom.json`).
+- [x] **[ID-010] [2026-08-21]**: **Exportação e Importação de Perfis Customizados**: Permitir que técnicos salvem presets próprios em arquivos `.json` e os carreguem em outras máquinas via linha de comando (`-Preset C:\Custom.json`). *(Importação concluída na v14.0; falta o botão de exportar na GUI.)*
 - [ ] **[ID-011] [2026-08-21]**: **Detecção Inteligente de Hardware (SSD vs HDD)**: Detectar o tipo de disco do sistema com `Get-PhysicalDisk` para sugerir desligar o SysMain apenas em unidades mecânicas lentas (HDDs).
+- [x] **[ID-012] [2026-10-21]**: **Undo Exato por Diário de Alterações**: Gravar os valores originais antes de cada mudança e restaurá-los exatamente. *(Concluído na v14.0)*
+- [x] **[ID-013] [2026-10-21]**: **Modo Simulação (`-DryRun`)**: Mostrar tudo o que seria feito sem alterar o sistema. *(Concluído na v14.0)*
+- [ ] **[ID-014] [2026-10-21]**: **Assinatura Digital dos Scripts (Authenticode)**: Assinar os `.ps1` da release para que o Windows confirme a origem, além do SHA256 já verificado pelo `get.ps1`.
+- [ ] **[ID-015] [2026-10-21]**: **Exportar Perfil pela GUI**: Botão para salvar as caixas marcadas como um perfil `.json` reutilizável em outras máquinas.
 
 ## ❌ Ideias Rejeitadas / Descartadas
 - *Nenhuma ideia descartada até o momento.*

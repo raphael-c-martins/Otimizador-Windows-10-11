@@ -4,6 +4,36 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 
 ---
 
+## [v14.0 - Auditoria, Motor Único e Undo Exato] - 2026-10-21
+### ✨ Adicionado
+- **Motor único de execução:** GUI e terminal usam o mesmo motor; cada ajuste do `Tweaks.json` aponta para sua própria função (campo `Function`).
+- **Diário de alterações e Undo exato:** valores originais de registro, serviços, tarefas e energia são gravados antes de cada mudança e restaurados exatamente pelo Undo.
+- **Modo simulação (`-DryRun`):** mostra tudo o que seria feito sem alterar nada e sem exigir Administrador.
+- **Perfis personalizados:** `-Preset C:\caminho\perfil.json` (validado contra os catálogos).
+- **Novos ajustes separados:** Ocultar botões da barra de tarefas, Pesquisa Web no menu Iniciar, Desinstalar OneDrive e Limpar temporários.
+- **Códigos de saída para automação:** 0 sucesso, 1 erro de uso/permissão, 2 etapas com erro, 3 abortado sem ponto de restauração.
+- **Testes e CI:** suíte Pester em `/tests` e GitHub Actions com verificação de sintaxe, PSScriptAnalyzer e testes. Workflow de release com SHA256.
+
+### 🔧 Corrigido
+- O OneDrive não é mais removido em todas as execuções (agora é opcional; só o perfil Extremo o inclui).
+- O ponto de restauração é confirmado; falhas não aparecem mais como sucesso.
+- Etapas com falha são reportadas como `ERRO` no log, no resumo e no código de saída.
+- `Run.ps1` verifica privilégio de Administrador.
+- A linha de comando passa a respeitar os ajustes (`ApplyTweaks`) do perfil.
+- Caixas de seleção da GUI passam a ter efeito individual (ex.: "Exibir extensões" não altera mais o menu de contexto).
+- A GUI não trava durante a execução e bloqueia ações concorrentes (Undo, perfis, fechar).
+- Logs movidos para `%ProgramData%\OtimizadorWindows\logs` e nunca apagados pela limpeza de temporários.
+- Falha da GUI aberta pelo `Otimizador.cmd` agora reabre o modo terminal em janela visível (antes ficava oculta e parada).
+- Teams: o pacote `MSTeams` (trabalho/escola) não é mais removido pelos perfis Padrão, Gamer e Extremo.
+- Notebooks: hibernação mantida e plano Ultimate Performance não ativado. O plano não é mais duplicado a cada execução.
+- Ajustes de usuário vão para o perfil conectado quando o programa é elevado com outra conta.
+- Limite de 24 h dos pontos de restauração volta ao valor original após a criação.
+- Undo restaura `VisualFXSetting` para o padrão do Windows (0).
+- `get.ps1`: verifica SHA256 da release, extrai em pasta protegida, não fecha o terminal do usuário e preserva o TLS 1.3.
+- `Otimizador.cmd -CLI` não repete mais o parâmetro `-CLI`.
+
+---
+
 ## [v13.0 - Arquitetura Modular & Interface Gráfica Moderna] - 2026-08-21
 ### ✨ Adicionado
 - **Interface Gráfica Completa (Fluent Dark Mode GUI):** Janela moderna estilo Windows 11 com menu lateral (Sidebar), cards de perfis com 1 clique, painéis de personalização de aplicativos, privacidade, performance e terminal de logs ao vivo.
