@@ -12,8 +12,6 @@
     "XboxGamingOverlay", "XboxApp", "Clipchamp", "ZuneVideo", "Spotify", "MicrosoftStickyNotes", "ZuneMusic"
   ],
   "ApplyTweaks": [
-    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI",
-    "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "RestoreClassicContextMenu",
-    "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan", "OptimizeVisualEffects"
+    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI", "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan", "OptimizeVisualEffects", "HideTaskbarExtraButtons", "DisableStartMenuWebSearch", "ClearTempFiles"
   ]
 }

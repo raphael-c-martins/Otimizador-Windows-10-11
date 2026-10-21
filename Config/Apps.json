@@ -1,5 +1,5 @@
 ﻿{
-  "Version": "1.0",
+  "Version": "1.1",
   "Apps": [
     {
       "Id": "XboxGamingOverlay",
@@ -9,7 +9,8 @@
       "Category": "Gaming",
       "Description": "Sobreposição de jogos, atalhos de controle (Win+G) e gravação de tela.",
       "SelectedByDefault": false,
-      "Recommendation": "caution"
+      "Recommendation": "caution",
+      "RequiresTweaks": ["FixGameBarProtocols"]
     },
     {
       "Id": "XboxApp",
@@ -53,21 +54,21 @@
     },
     {
       "Id": "MicrosoftTeams",
-      "FriendlyName": "Microsoft Teams",
-      "PackageName": "*MicrosoftTeams*",
+      "FriendlyName": "Microsoft Teams (novo, trabalho/escola)",
+      "PackageName": "MSTeams",
       "WinGetId": "Microsoft.Teams",
       "Category": "Communication",
-      "Description": "Plataforma de mensagens e chamadas da Microsoft.",
+      "Description": "Novo Teams (pacote MSTeams), usado por empresas e escolas para reuniões e chat.",
       "SelectedByDefault": false,
       "Recommendation": "caution"
     },
     {
       "Id": "MSTeamsLegacy",
-      "FriendlyName": "Microsoft Teams (Legacy/Home)",
-      "PackageName": "*MSTeams*",
+      "FriendlyName": "Microsoft Teams (pessoal / Chat do Windows 11)",
+      "PackageName": "MicrosoftTeams",
       "WinGetId": "",
       "Category": "Communication",
-      "Description": "Versão pré-instalada do Teams para contas pessoais.",
+      "Description": "Teams pré-instalado para contas pessoais (pacote MicrosoftTeams), integrado ao Chat da barra de tarefas.",
       "SelectedByDefault": true,
       "Recommendation": "safe"
     },

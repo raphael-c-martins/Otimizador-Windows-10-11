@@ -1,67 +1,118 @@
 ﻿<#
 .SYNOPSIS
-    Módulo de Gerenciamento de Threads Assíncronas e Fluidez da Interface Gráfica (WPF).
+    Módulo de Execução em Segundo Plano (mantém a janela gráfica responsiva).
 .DESCRIPTION
-    Fornece funções de bombeamento de mensagens da UI (Invoke-DoEvents a 60 FPS) e execução
-    não-bloqueante de scripts em segundo plano (Invoke-NonBlocking) para impedir qualquer congelamento.
+    A GUI não executa nenhuma otimização na sua própria thread: cada operação roda em um runspace
+    (uma instância separada do PowerShell, em outra thread). O runspace envia logs e progresso por uma
+    fila segura entre threads, que a janela lê periodicamente com um temporizador.
 #>
 
-function Invoke-DoEvents {
-    <#
-    .SYNOPSIS
-        Processa todas as mensagens pendentes da fila da janela WPF (mouse, renderização, redimensionamento)
-        mantendo a interface 100% responsiva e fluida.
-    #>
-    try {
-        $frame = [System.Windows.Threading.DispatcherFrame]::new()
-        $null = [System.Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke(
-            [System.Windows.Threading.DispatcherPriority]::Background,
-            [System.Windows.Threading.DispatcherOperationCallback]{
-                param($f)
-                $f.Continue = $false
-                return $null
-            },
-            $frame
-        )
-        $null = [System.Windows.Threading.Dispatcher]::PushFrame($frame)
-    } catch {}
+$script:BackgroundTaskScript = @'
+param($TaskScriptDir, $TaskLogFile, $TaskOperation, $TaskArguments, $TaskQueue)
+
+# Os módulos declaram variáveis de escopo "script" (ex.: $script:LogFilePath). Como este script roda no
+# escopo global do runspace, os parâmetros usam o prefixo "Task" para não serem sobrescritos ao carregar os módulos.
+foreach ($ModuleFile in (Get-ChildItem -LiteralPath (Join-Path $TaskScriptDir 'src\Core') -Filter '*.ps1' | Sort-Object Name)) {
+    . $ModuleFile.FullName
 }
 
-function Invoke-NonBlocking {
-    <#
-    .SYNOPSIS
-        Executa um ScriptBlock em um Runspace assíncrono em segundo plano enquanto mantém a UI fluida.
-    #>
+$LogSink = {
+    param($Level, $Message)
+    $TaskQueue.Enqueue([pscustomobject]@{ Type = 'Log'; Level = $Level; Message = $Message; Time = (Get-Date) })
+}.GetNewClosure()
+$ProgressSink = {
+    param($Current, $Total, $Activity)
+    $TaskQueue.Enqueue([pscustomobject]@{ Type = 'Progress'; Current = $Current; Total = $Total; Activity = $Activity })
+}.GetNewClosure()
+Set-OptimizerLogTarget -FilePath $TaskLogFile -Sink $LogSink -ProgressSink $ProgressSink
+
+try {
+    switch ($TaskOperation) {
+        'RestorePoint' {
+            try {
+                Invoke-SystemRestorePoint -Description $TaskArguments.Description | Out-Null
+                [pscustomobject]@{ Success = $true; Message = '' }
+            } catch {
+                Write-OptimizerLog -Level ERRO -Message "Ponto de Restauração não criado: $($_.Exception.Message)"
+                [pscustomobject]@{ Success = $false; Message = $_.Exception.Message }
+            }
+        }
+        'Optimize' {
+            $Catalog = Get-OptimizerCatalog -ScriptDir $TaskScriptDir
+            Invoke-OptimizationPlan -Catalog $Catalog -AppIds $TaskArguments.AppIds -TweakIds $TaskArguments.TweakIds -Context $TaskArguments.Context -DryRun:([bool]$TaskArguments.DryRun)
+        }
+        'Undo' {
+            Set-UserRegistryTarget -Sid $TaskArguments.UserSid
+            Invoke-SystemUndo -JournalDirectory $TaskArguments.JournalDirectory -IsWin11 ([bool]$TaskArguments.IsWin11) -DryRun:([bool]$TaskArguments.DryRun)
+        }
+    }
+} catch {
+    Write-OptimizerLog -Level ERRO -Message "Falha inesperada na operação '$TaskOperation': $($_.Exception.Message)"
+    [pscustomobject]@{ Success = $false; Message = $_.Exception.Message; Unexpected = $true }
+}
+'@
+
+function Start-OptimizerBackgroundTask {
     param(
-        [scriptblock]$ScriptBlock,
-        [object[]]$ArgumentList = @(),
-        [int]$TimeoutSeconds = 0
+        [Parameter(Mandatory)][string]$ScriptDir,
+        [string]$LogFilePath = $null,
+        [Parameter(Mandatory)][ValidateSet('Optimize', 'RestorePoint', 'Undo')][string]$Operation,
+        [hashtable]$Arguments = @{}
     )
 
-    $ps = [powershell]::Create()
-    try {
-        $null = $ps.AddScript($ScriptBlock.ToString())
-        foreach ($arg in $ArgumentList) {
-            $null = $ps.AddArgument($arg)
-        }
+    $Queue = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
 
-        $handle = $ps.BeginInvoke()
+    $SessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    $SessionState.ExecutionPolicy = [Microsoft.PowerShell.ExecutionPolicy]::Bypass
+    $Runspace = [runspacefactory]::CreateRunspace($SessionState)
+    $Runspace.Open()
 
-        $stopwatch = if ($TimeoutSeconds -gt 0) { [System.Diagnostics.Stopwatch]::StartNew() } else { $null }
+    $PowerShell = [powershell]::Create()
+    $PowerShell.Runspace = $Runspace
+    $null = $PowerShell.AddScript($script:BackgroundTaskScript).
+        AddArgument($ScriptDir).
+        AddArgument($LogFilePath).
+        AddArgument($Operation).
+        AddArgument($Arguments).
+        AddArgument($Queue)
 
-        while (-not $handle.IsCompleted) {
-            if ($stopwatch -and $stopwatch.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
-                $ps.Stop()
-                throw "Operação expirou o tempo limite de $TimeoutSeconds segundos"
-            }
-            Invoke-DoEvents
-            Start-Sleep -Milliseconds 16 # 60 FPS UI Pumping
-        }
-
-        $result = $ps.EndInvoke($handle)
-        return $result
+    return [pscustomobject]@{
+        Operation  = $Operation
+        PowerShell = $PowerShell
+        Runspace   = $Runspace
+        Handle     = $PowerShell.BeginInvoke()
+        Queue      = $Queue
     }
-    finally {
-        $ps.Dispose()
+}
+
+function Receive-OptimizerBackgroundEvents {
+    param([Parameter(Mandatory)]$Task)
+    $Items = [System.Collections.Generic.List[object]]::new()
+    $Item = $null
+    while ($Task.Queue.TryDequeue([ref]$Item)) { $Items.Add($Item) }
+    return , $Items.ToArray()
+}
+
+function Test-OptimizerBackgroundTaskCompleted {
+    param([Parameter(Mandatory)]$Task)
+    return $Task.Handle.IsCompleted
+}
+
+function Complete-OptimizerBackgroundTask {
+    <#
+    .SYNOPSIS
+        Coleta o resultado de uma tarefa concluída e libera o runspace.
+    #>
+    param([Parameter(Mandatory)]$Task)
+    try {
+        $Output = $Task.PowerShell.EndInvoke($Task.Handle)
+        $Errors = @($Task.PowerShell.Streams.Error | ForEach-Object { $_.ToString() })
+        $Result = if ($Output.Count -gt 0) { $Output[$Output.Count - 1] } else { $null }
+        return [pscustomobject]@{ Result = $Result; Errors = $Errors }
+    } catch {
+        return [pscustomobject]@{ Result = $null; Errors = @($_.Exception.Message) }
+    } finally {
+        $Task.PowerShell.Dispose()
+        $Task.Runspace.Dispose()
     }
 }

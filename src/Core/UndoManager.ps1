@@ -2,64 +2,113 @@
 .SYNOPSIS
     Módulo de Reversão e Restauração de Configurações do Sistema (Undo Engine).
 .DESCRIPTION
-    Permite restaurar serviços essenciais (SysMain, WSearch), menu de contexto nativo,
-    protocolos do Xbox e configurações padrão caso o usuário necessite.
+    Modo principal: lê os diários de alteração (estado_*.json) do mais novo para o mais antigo e devolve
+    cada valor de registro, serviço, tarefa e plano de energia ao estado exato anterior à otimização.
+    Modo alternativo (sem diário, ex.: otimizações feitas pela v13): restaura os padrões do Windows.
+    Aplicativos removidos e o Microsoft Edge NÃO são reinstalados (devem ser obtidos na Microsoft Store).
 #>
 
-function Invoke-SystemUndoTweaks {
+function Invoke-SystemUndo {
     param(
-        [bool]$IsWin11 = $true
+        [Parameter(Mandatory)][string]$JournalDirectory,
+        [bool]$IsWin11 = $true,
+        [switch]$DryRun,
+        [switch]$SkipExplorerRestart
     )
 
-    Write-Host "`n [..] Iniciando processo de restauração das configurações padrão..." -ForegroundColor Yellow
+    $Journals = Get-PendingChangeJournals -Directory $JournalDirectory
+    $Result = [pscustomobject]@{ Mode = ''; Files = $Journals.Count; Restored = 0; Failed = 0 }
 
-    # 1. Restaurar serviços SysMain e WSearch
-    try {
-        Set-Service -Name "SysMain" -StartupType Automatic -ErrorAction SilentlyContinue | Out-Null
-        Start-Service -Name "SysMain" -ErrorAction SilentlyContinue | Out-Null
+    if ($Journals.Count -gt 0) {
+        $Result.Mode = 'Diario'
+        Write-OptimizerLog -Level ETAPA -Message "Revertendo $($Journals.Count) execução(ões) registradas no diário de alterações"
 
-        Set-Service -Name "WSearch" -StartupType Automatic -ErrorAction SilentlyContinue | Out-Null
-        Start-Service -Name "WSearch" -ErrorAction SilentlyContinue | Out-Null
-        Write-Host " [ OK ] Serviços SysMain e Windows Search reativados." -ForegroundColor Green
-    } catch {}
-
-    # 2. Restaurar menu de contexto nativo do Windows 11
-    if ($IsWin11) {
-        try {
-            $Key = "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"
-            if (Test-Path $Key) {
-                Remove-Item -Path $Key -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
-                Write-Host " [ OK ] Menu de contexto moderno do Windows 11 restaurado." -ForegroundColor Green
+        foreach ($File in $Journals) {
+            if ($DryRun) {
+                $Count = @((Get-Content -LiteralPath $File.FullName -Raw -Encoding UTF8 | ConvertFrom-Json).Entradas).Count
+                Write-OptimizerLog -Level INFO -Message "[SIMULAÇÃO] $($File.Name): $Count alterações seriam revertidas."
+                continue
             }
-        } catch {}
+            $Partial = Restore-ChangeJournalFile -Path $File.FullName
+            $Result.Restored += $Partial.Restored
+            $Result.Failed += $Partial.Failed
+            if ($Partial.Failed -eq 0) {
+                Rename-Item -LiteralPath $File.FullName -NewName ($File.Name -replace '\.json$', '.restaurado.json')
+                Write-OptimizerLog -Level OK -Message "$($File.Name): $($Partial.Restored) alterações revertidas."
+            } else {
+                Write-OptimizerLog -Level AVISO -Message "$($File.Name): $($Partial.Restored) revertidas, $($Partial.Failed) falharam (o diário foi mantido para nova tentativa)."
+            }
+        }
+    } else {
+        $Result.Mode = 'Padroes'
+        if ($DryRun) {
+            Write-OptimizerLog -Level INFO -Message '[SIMULAÇÃO] Nenhum diário de alterações encontrado: os padrões do Windows seriam restaurados para os itens conhecidos.'
+        } else {
+            Write-OptimizerLog -Level AVISO -Message 'Nenhum diário de alterações encontrado: restaurando os padrões do Windows para os itens conhecidos.'
+            $Partial = Invoke-WindowsDefaultsRestore -IsWin11 $IsWin11
+            $Result.Restored = $Partial.Restored
+            $Result.Failed = $Partial.Failed
+        }
     }
 
-    # 3. Restaurar protocolos do Xbox Game Bar
-    try {
-        Restore-GameBarProtocols
-        $GameConfig = "HKCU:\System\GameConfigStore"
-        if (Test-Path $GameConfig) {
-            Set-ItemProperty -Path $GameConfig -Name "GameDVR_Enabled" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue | Out-Null
-        }
-        $GameBar = "HKCU:\SOFTWARE\Microsoft\GameBar"
-        if (Test-Path $GameBar) {
-            Set-ItemProperty -Path $GameBar -Name "UseNexusForGameBarEnabled" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue | Out-Null
-        }
-        Write-Host " [ OK ] Protocolos e configurações do Xbox restaurados." -ForegroundColor Green
-    } catch {}
+    if (-not $DryRun -and -not $SkipExplorerRestart) {
+        try { Restart-WindowsExplorer } catch { Write-OptimizerLog -Level AVISO -Message "Explorer não reiniciado: $($_.Exception.Message)" }
+    }
+    Write-OptimizerLog -Level INFO -Message 'Aplicativos removidos não são reinstalados automaticamente: use a Microsoft Store se precisar de algum.'
+    return $Result
+}
 
-    # 4. Reativar efeitos visuais padrão
-    try {
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" -Name "VisualFXSetting" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue | Out-Null
-        $Theme = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-        if (Test-Path $Theme) {
-            Set-ItemProperty -Path $Theme -Name "EnableTransparency" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue | Out-Null
-        }
-        Set-ItemProperty -Path "HKCU:\Control Panel\Desktop\WindowMetrics" -Name "MinAnimate" -Value "1" -Force -ErrorAction SilentlyContinue | Out-Null
-        Write-Host " [ OK ] Efeitos visuais e transparências restaurados." -ForegroundColor Green
-    } catch {}
+function Invoke-WindowsDefaultsRestore {
+    <#
+    .SYNOPSIS
+        Restauração genérica para sistemas otimizados por versões sem diário de alterações.
+    #>
+    param([bool]$IsWin11 = $true)
 
-    # 5. Reiniciar Explorer
-    Restart-WindowsExplorer
-    Write-Host " [ SUCESSO ] Restauração concluída com sucesso.`n" -ForegroundColor Green
+    $Actions = [ordered]@{
+        'Serviços SysMain e Windows Search' = {
+            Set-Service -Name 'SysMain' -StartupType Automatic -ErrorAction Stop
+            Start-Service -Name 'SysMain' -ErrorAction SilentlyContinue
+            Set-Service -Name 'WSearch' -StartupType Automatic -ErrorAction Stop
+            Start-Service -Name 'WSearch' -ErrorAction SilentlyContinue
+        }
+        'Serviços de telemetria' = {
+            Set-Service -Name 'DiagTrack' -StartupType Automatic -ErrorAction Stop
+            Set-Service -Name 'dmwappushservice' -StartupType Manual -ErrorAction SilentlyContinue
+        }
+        'Menu de contexto do Windows 11' = {
+            if ($IsWin11) {
+                $Base = Open-BaseRegistryKey -Hive (ConvertTo-RegistryLocation -Path 'HKCU:\Software').Hive
+                try { $Base.DeleteSubKeyTree((ConvertTo-RegistryLocation -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}').SubKey, $false) } finally { $Base.Dispose() }
+            }
+        }
+        'Protocolos e gravação do Xbox' = {
+            Restore-GameBarProtocols
+            Set-RegistryValue -Path 'HKCU:\System\GameConfigStore' -Name 'GameDVR_Enabled' -Value 1
+            Set-RegistryValue -Path 'HKCU:\SOFTWARE\Microsoft\GameBar' -Name 'UseNexusForGameBarEnabled' -Value 1
+        }
+        'Efeitos visuais e transparência' = {
+            Set-RegistryValue -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects' -Name 'VisualFXSetting' -Value 0
+            Set-RegistryValue -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name 'EnableTransparency' -Value 1
+            Set-RegistryValue -Path 'HKCU:\Control Panel\Desktop\WindowMetrics' -Name 'MinAnimate' -Value '1' -Type String
+        }
+        'Hibernação e Inicialização Rápida' = {
+            & powercfg.exe /hibernate on | Out-Null
+            Set-RegistryValue -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name 'HiberbootEnabled' -Value 1
+        }
+    }
+
+    $Restored = 0
+    $Failed = 0
+    foreach ($Name in $Actions.Keys) {
+        try {
+            & $Actions[$Name]
+            $Restored++
+            Write-OptimizerLog -Level OK -Message "$Name restaurado(s)."
+        } catch {
+            $Failed++
+            Write-OptimizerLog -Level ERRO -Message "$Name`: $($_.Exception.Message)"
+        }
+    }
+    return [pscustomobject]@{ Restored = $Restored; Failed = $Failed }
 }

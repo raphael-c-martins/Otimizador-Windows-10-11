@@ -13,8 +13,6 @@
     "MicrosoftTeams", "OutlookForWindows", "MicrosoftStickyNotes", "WindowsDevHome", "QuickAssist", "YourPhone"
   ],
   "ApplyTweaks": [
-    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI",
-    "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "FixGameBarProtocols",
-    "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "OptimizeVisualEffects"
+    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI", "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "FixGameBarProtocols", "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "OptimizeVisualEffects", "HideTaskbarExtraButtons", "DisableStartMenuWebSearch", "ClearTempFiles"
   ]
 }

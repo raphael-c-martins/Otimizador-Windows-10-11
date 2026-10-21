@@ -14,9 +14,6 @@
     "MicrosoftStickyNotes"
   ],
   "ApplyTweaks": [
-    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI",
-    "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "FixGameBarProtocols",
-    "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan",
-    "OptimizeVisualEffects", "DisableSysMainAndWSearch", "ForceUninstallEdge"
+    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI", "DisableCopilot", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "FixGameBarProtocols", "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan", "OptimizeVisualEffects", "DisableSysMainAndWSearch", "ForceUninstallEdge", "HideTaskbarExtraButtons", "DisableStartMenuWebSearch", "ClearTempFiles", "RemoveOneDrive"
   ]
 }

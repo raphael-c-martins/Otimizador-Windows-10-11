@@ -1,25 +1,17 @@
 ﻿<#
 .SYNOPSIS
-    Interface Gráfica Principal Moderna (Sidebar Fluent Design + Execução Fluida em Tempo Real).
+    Interface Gráfica Principal (WPF Dark Mode com menu lateral).
 .DESCRIPTION
-    Apresenta uma interface moderna em Dark Mode com navegação por menu lateral estilo Windows 11,
-    execução com bombeamento de UI contínuo e feedback de logs em tempo real com barra de progresso precisa.
+    A janela apenas coleta as escolhas do usuário: toda otimização, ponto de restauração e reversão
+    roda em segundo plano (ThreadingManager.ps1). Um temporizador lê a fila de eventos e atualiza
+    log e barra de progresso, mantendo a janela responsiva. Durante a execução, os controles que
+    poderiam disparar uma segunda operação ficam bloqueados.
 #>
 
-function Show-MainOptimizerWindow {
-    param(
-        [array]$AllApps,
-        [array]$AllTweaks,
-        [string]$CurrentOS,
-        [string]$ScriptDir
-    )
-
-    Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms | Out-Null
-
-    [string]$Xaml = @"
+$script:MainWindowXaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="⚡ Otimizador de Windows (v13.0 Modular)"
+        Title="Otimizador de Windows"
         Height="700" Width="1000" MinHeight="620" MinWidth="880"
         WindowStartupLocation="CenterScreen"
         Background="#121212" Foreground="#F0F0F0"
@@ -78,16 +70,19 @@ function Show-MainOptimizerWindow {
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⚡ OTIMIZADOR DE WINDOWS" FontSize="19" FontWeight="Bold" Foreground="#00B4D8"/>
                         <Border Background="#0077B6" CornerRadius="4" Margin="12,0,0,0" Padding="8,2" VerticalAlignment="Center">
-                            <TextBlock Text="v13.0 MODULAR" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            <TextBlock Name="VersionBadgeText" Text="v0" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        </Border>
+                        <Border Name="DryRunBadge" Background="#B7791F" CornerRadius="4" Margin="8,0,0,0" Padding="8,2" VerticalAlignment="Center" Visibility="Collapsed">
+                            <TextBlock Text="SIMULAÇÃO: NADA SERÁ ALTERADO" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
                         </Border>
                     </StackPanel>
-                    <TextBlock Text="Suíte profissional de debloat, privacidade e otimização de alta performance." 
+                    <TextBlock Text="Debloat, privacidade e otimização com reversão por diário de alterações."
                                FontSize="12" Foreground="#8E8E8E" Margin="0,3,0,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Name="HostInfoText" Text="Host: Windows 11" FontSize="12" Foreground="#00B4D8" TextAlignment="Right"/>
-                    <TextBlock Name="UserInfoText" Text="Admin: Raphael.martins" FontSize="11" Foreground="#7E7E7E" TextAlignment="Right"/>
+                    <TextBlock Name="HostInfoText" Text="" FontSize="12" Foreground="#00B4D8" TextAlignment="Right"/>
+                    <TextBlock Name="UserInfoText" Text="" FontSize="11" Foreground="#7E7E7E" TextAlignment="Right"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -114,13 +109,13 @@ function Show-MainOptimizerWindow {
 
             <!-- CONTEÚDO PRINCIPAL (PAINÉIS ALTERNÁVEIS) -->
             <Grid Grid.Column="1" Margin="16,12,16,12">
-                
+
                 <!-- PAINEL 1: PRESETS -->
                 <Grid Name="PanelPresets" Visibility="Visible">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock Text="Selecione um perfil pronto para aplicar a combinação ideal de configurações:" 
-                                       FontSize="13" Foreground="#B0B0B0" Margin="0,0,0,14"/>
+                            <TextBlock Text="Selecione um perfil pronto. Você pode revisar aplicativos e ajustes nas outras abas antes de executar."
+                                       FontSize="13" Foreground="#B0B0B0" Margin="0,0,0,14" TextWrapping="Wrap"/>
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -136,7 +131,7 @@ function Show-MainOptimizerWindow {
                                 <Border Grid.Row="0" Grid.Column="0" Background="#1C1C1C" BorderBrush="#0077B6" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
                                         <TextBlock Text="🚀 PADRÃO (Equilibrado)" FontSize="15" FontWeight="Bold" Foreground="#00B4D8"/>
-                                        <TextBlock Text="Recomendado para uso diário. Remove bloatwares comuns, desativa telemetria e otimiza CPU/RAM mantendo recursos essenciais intactos." 
+                                        <TextBlock Text="Recomendado para uso diário. Remove bloatwares comuns, desativa telemetria e ajusta interface e energia mantendo recursos essenciais."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetPadrao" Content="Carregar Perfil Padrão" Background="#0077B6" BorderBrush="#0096C7"/>
                                     </StackPanel>
@@ -146,7 +141,7 @@ function Show-MainOptimizerWindow {
                                 <Border Grid.Row="0" Grid.Column="1" Background="#1C1C1C" BorderBrush="#2ECC71" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
                                         <TextBlock Text="🎮 GAMER (Máximo FPS)" FontSize="15" FontWeight="Bold" Foreground="#2ECC71"/>
-                                        <TextBlock Text="Preserva o ecossistema Xbox e Game Pass, desativa gravação de fundo (GameDVR) e aplica plano de energia Ultimate Performance." 
+                                        <TextBlock Text="Preserva o ecossistema Xbox e Game Pass, desativa gravação de fundo (GameDVR) e aplica plano de energia Ultimate Performance (exceto em notebooks)."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetGamer" Content="Carregar Perfil Gamer" Background="#27AE60" BorderBrush="#2ECC71"/>
                                     </StackPanel>
@@ -156,7 +151,7 @@ function Show-MainOptimizerWindow {
                                 <Border Grid.Row="1" Grid.Column="0" Background="#1C1C1C" BorderBrush="#9B59B6" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
                                         <TextBlock Text="💼 CORPORATIVO (Escritório)" FontSize="15" FontWeight="Bold" Foreground="#AF7AC5"/>
-                                        <TextBlock Text="Foco em produtividade e privacidade corporativa. Preserva Microsoft Teams e Office, bloqueia jogos e telemetrias invasivas." 
+                                        <TextBlock Text="Foco em produtividade e privacidade. Preserva Teams, Outlook e OneDrive, remove jogos e bloqueia telemetrias invasivas."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetCorp" Content="Carregar Perfil Corporativo" Background="#8E44AD" BorderBrush="#9B59B6"/>
                                     </StackPanel>
@@ -166,7 +161,7 @@ function Show-MainOptimizerWindow {
                                 <Border Grid.Row="1" Grid.Column="1" Background="#1C1C1C" BorderBrush="#E74C3C" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
                                         <TextBlock Text="🔥 EXTREMO (Hardware Antigo)" FontSize="15" FontWeight="Bold" Foreground="#E74C3C"/>
-                                        <TextBlock Text="Otimização agressiva para computadores lentos. Desativa SysMain/WSearch, remove o Microsoft Edge e bloqueia todos os extras." 
+                                        <TextBlock Text="Otimização agressiva para computadores lentos. Desativa SysMain/WSearch e remove OneDrive e Microsoft Edge."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetExtremo" Content="Carregar Perfil Extremo" Background="#C0392B" BorderBrush="#E74C3C"/>
                                     </StackPanel>
@@ -210,8 +205,8 @@ function Show-MainOptimizerWindow {
                     <Border Background="#1C1C1C" BorderBrush="#2C2C2C" BorderThickness="1" CornerRadius="4" Padding="12">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Name="PrivacyTweaksContainer">
-                                <TextBlock Text="Diretivas de Proteção de Dados, Bloqueio de Telemetria e Inteligência Artificial Local:" 
-                                           FontSize="13" Foreground="#B0B0B0" Margin="0,0,0,12"/>
+                                <TextBlock Text="Proteção de dados, bloqueio de telemetria e de recursos de Inteligência Artificial:"
+                                           FontSize="13" Foreground="#B0B0B0" Margin="0,0,0,6"/>
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
@@ -222,8 +217,8 @@ function Show-MainOptimizerWindow {
                     <Border Background="#1C1C1C" BorderBrush="#2C2C2C" BorderThickness="1" CornerRadius="4" Padding="12">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Name="SystemTweaksContainer">
-                                <TextBlock Text="Otimizações de Baixo Nível de CPU, I/O, Energia e Interface Gráfica:" 
-                                           FontSize="13" Foreground="#B0B0B0" Margin="0,0,0,12"/>
+                                <TextBlock Text="Ajustes de energia, serviços, interface, jogos e limpeza:"
+                                           FontSize="13" Foreground="#B0B0B0" Margin="0,0,0,6"/>
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
@@ -235,10 +230,10 @@ function Show-MainOptimizerWindow {
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBox Name="LogOutputBox" Grid.Row="0" Background="#0D0D0D" Foreground="#00FF66" 
+                    <TextBox Name="LogOutputBox" Grid.Row="0" Background="#0D0D0D" Foreground="#00FF66"
                              FontFamily="Consolas" FontSize="12" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
                              TextWrapping="Wrap" Padding="10"/>
-                    <Button Name="BtnOpenLogsFolder" Grid.Row="1" Content="📁 Abrir Pasta Física de Logs" Margin="0,8,0,0" HorizontalAlignment="Right"/>
+                    <Button Name="BtnOpenLogsFolder" Grid.Row="1" Content="📁 Abrir Pasta de Logs" Margin="0,8,0,0" HorizontalAlignment="Right"/>
                 </Grid>
 
                 <!-- PAINEL 6: UNDO -->
@@ -246,9 +241,9 @@ function Show-MainOptimizerWindow {
                     <Border Background="#1C1C1C" BorderBrush="#F39C12" BorderThickness="1" CornerRadius="6" Padding="20" VerticalAlignment="Top">
                         <StackPanel>
                             <TextBlock Text="🔄 Restauração e Reversão do Sistema" FontSize="18" FontWeight="Bold" Foreground="#F39C12"/>
-                            <TextBlock Text="Caso você necessite desfazer as modificações aplicadas, utilize o botão abaixo. Isso reativará os serviços de indexação, Superfetch (SysMain), o menu de contexto original do Windows 11 e os manipuladores de jogos." 
+                            <TextBlock Text="Cada execução grava um diário com os valores originais de registro, serviços, tarefas agendadas e plano de energia. A restauração devolve tudo ao estado exato anterior, da execução mais recente para a mais antiga. Aplicativos removidos e o Microsoft Edge não são reinstalados (use a Microsoft Store)."
                                        FontSize="13" Foreground="#C0C0C0" TextWrapping="Wrap" Margin="0,10,0,20"/>
-                            <Button Name="BtnUndoAction" Content="Restaurar Configurações Padrão Agora" Background="#D35400" BorderBrush="#E67E22" 
+                            <Button Name="BtnUndoAction" Content="Restaurar Configurações Anteriores Agora" Background="#D35400" BorderBrush="#E67E22"
                                     FontSize="14" Padding="18,10" HorizontalAlignment="Left"/>
                         </StackPanel>
                     </Border>
@@ -265,21 +260,18 @@ function Show-MainOptimizerWindow {
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Checkbox Ponto de Restauração -->
-                <CheckBox Name="ChkRestorePoint" Grid.Column="0" Content="Criar Ponto de Restauração antes de aplicar" 
+                <CheckBox Name="ChkRestorePoint" Grid.Column="0" Content="Criar Ponto de Restauração antes de aplicar"
                           IsChecked="True" VerticalAlignment="Center" Foreground="#00B4D8" FontWeight="SemiBold"/>
 
-                <!-- Status de Seleção e Progresso -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0">
                     <ProgressBar Name="GlobalProgressBar" Height="4" Background="#222222" Foreground="#00B4D8" BorderThickness="0" Visibility="Collapsed"/>
-                    <TextBlock Name="StatusBarText" Text="Pronto para otimizar." 
-                               Foreground="#8E8E8E" FontSize="12" TextAlignment="Center" Margin="0,4,0,0"/>
+                    <TextBlock Name="StatusBarText" Text="Pronto para otimizar."
+                               Foreground="#8E8E8E" FontSize="12" TextAlignment="Center" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
 
-                <!-- Botões de Ação -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Name="BtnCloseWindow" Content="Fechar" Width="85" Margin="0,0,8,0"/>
-                    <Button Name="BtnApplyOptimization" Content="⚡ EXECUTAR OTIMIZAÇÃO" 
+                    <Button Name="BtnApplyOptimization" Content="⚡ EXECUTAR OTIMIZAÇÃO"
                             Background="#27AE60" BorderBrush="#2ECC71" FontWeight="Bold" FontSize="13" Padding="16,8"/>
                 </StackPanel>
             </Grid>
@@ -288,396 +280,385 @@ function Show-MainOptimizerWindow {
 </Window>
 "@
 
-    $XmlDoc = [xml]$Xaml
-    $Reader = (New-Object System.Xml.XmlNodeReader $XmlDoc)
+$script:MainWindowControlNames = @(
+    'VersionBadgeText', 'DryRunBadge', 'HostInfoText', 'UserInfoText',
+    'NavBtnPresets', 'NavBtnApps', 'NavBtnPrivacy', 'NavBtnPerformance', 'NavBtnLogs', 'NavBtnUndo',
+    'PanelPresets', 'PanelApps', 'PanelPrivacy', 'PanelPerformance', 'PanelLogs', 'PanelUndo',
+    'AppsContainerList', 'PrivacyTweaksContainer', 'SystemTweaksContainer', 'AppSearchBox',
+    'BtnAppsSelectDefault', 'BtnAppsSelectAll', 'BtnAppsDeselectAll',
+    'BtnPresetPadrao', 'BtnPresetGamer', 'BtnPresetCorp', 'BtnPresetExtremo',
+    'BtnUndoAction', 'BtnApplyOptimization', 'BtnCloseWindow', 'BtnOpenLogsFolder',
+    'ChkRestorePoint', 'StatusBarText', 'LogOutputBox', 'GlobalProgressBar'
+)
+
+# Categorias de ajustes exibidas no painel "Privacidade & IA"; as demais vão para "Performance & Sistema"
+$script:PrivacyPanelCategories = @('Privacy', 'AI')
+
+function New-MainWindow {
+    <#
+    .SYNOPSIS
+        Carrega o XAML e devolve a janela com o mapa de controles nomeados (sem exibi-la).
+    #>
+    Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase | Out-Null
+
+    $Reader = New-Object System.Xml.XmlNodeReader ([xml]$script:MainWindowXaml)
     $Window = [System.Windows.Markup.XamlReader]::Load($Reader)
 
-    # Identificar Controles
-    $HostInfoText = $Window.FindName("HostInfoText")
-    $UserInfoText = $Window.FindName("UserInfoText")
-    
-    # Navegação
-    $NavBtnPresets = $Window.FindName("NavBtnPresets")
-    $NavBtnApps = $Window.FindName("NavBtnApps")
-    $NavBtnPrivacy = $Window.FindName("NavBtnPrivacy")
-    $NavBtnPerformance = $Window.FindName("NavBtnPerformance")
-    $NavBtnLogs = $Window.FindName("NavBtnLogs")
-    $NavBtnUndo = $Window.FindName("NavBtnUndo")
+    $Controls = @{}
+    foreach ($Name in $script:MainWindowControlNames) {
+        $Control = $Window.FindName($Name)
+        if ($null -eq $Control) { throw "Controle '$Name' não encontrado no XAML da janela principal." }
+        $Controls[$Name] = $Control
+    }
+    return [pscustomobject]@{ Window = $Window; Controls = $Controls }
+}
 
-    # Painéis
-    $PanelPresets = $Window.FindName("PanelPresets")
-    $PanelApps = $Window.FindName("PanelApps")
-    $PanelPrivacy = $Window.FindName("PanelPrivacy")
-    $PanelPerformance = $Window.FindName("PanelPerformance")
-    $PanelLogs = $Window.FindName("PanelLogs")
-    $PanelUndo = $Window.FindName("PanelUndo")
+function ConvertTo-Brush {
+    param([Parameter(Mandatory)][string]$Hex)
+    return [System.Windows.Media.BrushConverter]::new().ConvertFromString($Hex)
+}
 
-    # Containers
-    $AppsContainerList = $Window.FindName("AppsContainerList")
-    $PrivacyTweaksContainer = $Window.FindName("PrivacyTweaksContainer")
-    $SystemTweaksContainer = $Window.FindName("SystemTweaksContainer")
-    $AppSearchBox = $Window.FindName("AppSearchBox")
-    $BtnAppsSelectDefault = $Window.FindName("BtnAppsSelectDefault")
-    $BtnAppsSelectAll = $Window.FindName("BtnAppsSelectAll")
-    $BtnAppsDeselectAll = $Window.FindName("BtnAppsDeselectAll")
-    $BtnPresetPadrao = $Window.FindName("BtnPresetPadrao")
-    $BtnPresetGamer = $Window.FindName("BtnPresetGamer")
-    $BtnPresetCorp = $Window.FindName("BtnPresetCorp")
-    $BtnPresetExtremo = $Window.FindName("BtnPresetExtremo")
-    $BtnUndoAction = $Window.FindName("BtnUndoAction")
-    $BtnApplyOptimization = $Window.FindName("BtnApplyOptimization")
-    $BtnCloseWindow = $Window.FindName("BtnCloseWindow")
-    $BtnOpenLogsFolder = $Window.FindName("BtnOpenLogsFolder")
-    $ChkRestorePoint = $Window.FindName("ChkRestorePoint")
-    $StatusBarText = $Window.FindName("StatusBarText")
-    $LogOutputBox = $Window.FindName("LogOutputBox")
-    $GlobalProgressBar = $Window.FindName("GlobalProgressBar")
+function Show-MainOptimizerWindow {
+    param(
+        [Parameter(Mandatory)]$Catalog,
+        [Parameter(Mandatory)][hashtable]$Context,
+        [Parameter(Mandatory)][string]$ScriptDir,
+        [Parameter(Mandatory)][string]$LogFilePath,
+        [string]$OSCaption = 'Windows',
+        [switch]$DryRun
+    )
 
-    $HostInfoText.Text = "Host: $CurrentOS"
-    $UserInfoText.Text = "SysAdmin: $env:USERNAME | PC: $env:COMPUTERNAME"
+    $Ui = New-MainWindow
+    $Window = $Ui.Window
+    $C = $Ui.Controls
+    $IsDryRun = [bool]$DryRun
 
-    # Lógica de Troca de Abas da Sidebar
-    $AllNavButtons = @($NavBtnPresets, $NavBtnApps, $NavBtnPrivacy, $NavBtnPerformance, $NavBtnLogs, $NavBtnUndo)
-    $AllPanels = @($PanelPresets, $PanelApps, $PanelPrivacy, $PanelPerformance, $PanelLogs, $PanelUndo)
+    # Estado compartilhado pelos eventos (alterado por propriedade, pois cada evento tem seu próprio escopo)
+    $State = @{ Task = $null; Busy = $false; OnComplete = $null; PendingOptimize = $null; Timer = $null }
+
+    $Window.Title = "Otimizador de Windows v$script:OptimizerVersion$(if ($IsDryRun) { ' [SIMULAÇÃO]' })"
+    $C.VersionBadgeText.Text = "v$script:OptimizerVersion"
+    if ($IsDryRun) { $C.DryRunBadge.Visibility = [System.Windows.Visibility]::Visible }
+    $C.HostInfoText.Text = "Sistema: $OSCaption"
+    $C.UserInfoText.Text = "Usuário: $env:USERNAME | PC: $env:COMPUTERNAME | $(if ($Context.IsPortable) { 'Notebook' } else { 'Desktop' })"
+
+    #region Log e status
+
+    $AppendLogLine = {
+        param([string]$Level, [string]$Message)
+        $C.LogOutputBox.AppendText("[$(Get-Date -Format 'HH:mm:ss')] [$Level] $Message`r`n")
+        $C.LogOutputBox.ScrollToEnd()
+    }
+    # Mensagens geradas na própria janela vão para o arquivo de log e para o painel
+    Set-OptimizerLogTarget -FilePath $LogFilePath -Sink $AppendLogLine
+
+    $SetStatus = {
+        param([string]$Text)
+        $C.StatusBarText.Text = $Text
+    }
+
+    #endregion
+
+    #region Navegação
+
+    $AllNavButtons = @($C.NavBtnPresets, $C.NavBtnApps, $C.NavBtnPrivacy, $C.NavBtnPerformance, $C.NavBtnLogs, $C.NavBtnUndo)
+    $AllPanels = @($C.PanelPresets, $C.PanelApps, $C.PanelPrivacy, $C.PanelPerformance, $C.PanelLogs, $C.PanelUndo)
 
     $SwitchTab = {
         param($TargetBtn, $TargetPanel)
-        foreach ($btn in $AllNavButtons) {
-            $btn.Background = [System.Windows.Media.Brushes]::Transparent
-            $btn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#C0C0C0")
+        foreach ($Btn in $AllNavButtons) {
+            $Btn.Background = [System.Windows.Media.Brushes]::Transparent
+            $Btn.Foreground = ConvertTo-Brush '#C0C0C0'
         }
-        foreach ($panel in $AllPanels) {
-            $panel.Visibility = [System.Windows.Visibility]::Collapsed
-        }
-        $TargetBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#222222")
-        $TargetBtn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#00B4D8")
+        foreach ($Panel in $AllPanels) { $Panel.Visibility = [System.Windows.Visibility]::Collapsed }
+        $TargetBtn.Background = ConvertTo-Brush '#222222'
+        $TargetBtn.Foreground = ConvertTo-Brush '#00B4D8'
         $TargetPanel.Visibility = [System.Windows.Visibility]::Visible
     }
 
-    $NavBtnPresets.Add_Click({ & $SwitchTab $NavBtnPresets $PanelPresets })
-    $NavBtnApps.Add_Click({ & $SwitchTab $NavBtnApps $PanelApps })
-    $NavBtnPrivacy.Add_Click({ & $SwitchTab $NavBtnPrivacy $PanelPrivacy })
-    $NavBtnPerformance.Add_Click({ & $SwitchTab $NavBtnPerformance $PanelPerformance })
-    $NavBtnLogs.Add_Click({ & $SwitchTab $NavBtnLogs $PanelLogs })
-    $NavBtnUndo.Add_Click({ & $SwitchTab $NavBtnUndo $PanelUndo })
+    $C.NavBtnPresets.Add_Click({ & $SwitchTab $C.NavBtnPresets $C.PanelPresets })
+    $C.NavBtnApps.Add_Click({ & $SwitchTab $C.NavBtnApps $C.PanelApps })
+    $C.NavBtnPrivacy.Add_Click({ & $SwitchTab $C.NavBtnPrivacy $C.PanelPrivacy })
+    $C.NavBtnPerformance.Add_Click({ & $SwitchTab $C.NavBtnPerformance $C.PanelPerformance })
+    $C.NavBtnLogs.Add_Click({ & $SwitchTab $C.NavBtnLogs $C.PanelLogs })
+    $C.NavBtnUndo.Add_Click({ & $SwitchTab $C.NavBtnUndo $C.PanelUndo })
 
-    # Mapeamento de Checkboxes
+    #endregion
+
+    #region Listas de aplicativos e ajustes
+
     $AppCheckBoxes = [System.Collections.Generic.List[System.Windows.Controls.CheckBox]]::new()
-    $TweakCheckBoxes = [System.Collections.Generic.Dictionary[string, System.Windows.Controls.CheckBox]]::new()
+    $TweakCheckBoxes = [System.Collections.Generic.List[System.Windows.Controls.CheckBox]]::new()
 
-    $CatDisplayNames = @{
-        "Gaming"          = "🎮 Jogos & Xbox"
-        "AI"              = "🤖 Inteligência Artificial & Copilot"
-        "Productivity"    = "💼 Produtividade & Office"
-        "Communication"   = "💬 Comunicação & Mensagens"
-        "Media"           = "🎬 Mídia, Vídeo & Áudio"
-        "Utilities"       = "🛠️ Utilitários & Notícias"
-        "ThirdPartyBloat" = "📦 Bloatware Pré-instalado (OEM / Patrocinados)"
+    $NewHeader = {
+        param([string]$Text)
+        $Header = New-Object System.Windows.Controls.TextBlock
+        $Header.Text = $Text
+        $Header.FontSize = 14
+        $Header.FontWeight = [System.Windows.FontWeights]::Bold
+        $Header.Foreground = ConvertTo-Brush '#00B4D8'
+        $Header.Margin = New-Object System.Windows.Thickness(4, 10, 4, 4)
+        return $Header
     }
 
-    # 1. Renderizar Apps
-    $GroupedApps = $AllApps | Group-Object -Property Category
-    foreach ($Group in $GroupedApps) {
-        $HeaderTitle = if ($CatDisplayNames.ContainsKey($Group.Name)) { $CatDisplayNames[$Group.Name] } else { $Group.Name }
+    $AppCategoryNames = @{
+        'Gaming'          = '🎮 Jogos & Xbox'
+        'AI'              = '🤖 Inteligência Artificial & Copilot'
+        'Productivity'    = '💼 Produtividade & Office'
+        'Communication'   = '💬 Comunicação & Mensagens'
+        'Media'           = '🎬 Mídia, Vídeo & Áudio'
+        'Utilities'       = '🛠️ Utilitários & Notícias'
+        'ThirdPartyBloat' = '📦 Bloatware Pré-instalado (OEM / Patrocinados)'
+    }
 
-        $HeaderBlock = New-Object System.Windows.Controls.TextBlock
-        $HeaderBlock.Text = $HeaderTitle
-        $HeaderBlock.FontSize = 14
-        $HeaderBlock.FontWeight = [System.Windows.FontWeights]::Bold
-        $HeaderBlock.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#00B4D8")
-        $HeaderBlock.Margin = New-Object System.Windows.Thickness(4, 10, 4, 4)
-        $AppsContainerList.Children.Add($HeaderBlock) | Out-Null
+    foreach ($Group in ($Catalog.Apps | Group-Object -Property Category)) {
+        $Title = if ($AppCategoryNames.ContainsKey($Group.Name)) { $AppCategoryNames[$Group.Name] } else { $Group.Name }
+        $C.AppsContainerList.Children.Add((& $NewHeader $Title)) | Out-Null
 
         foreach ($App in $Group.Group) {
             $Cb = New-Object System.Windows.Controls.CheckBox
             $Cb.Content = "$($App.FriendlyName)"
             $Cb.Tag = $App
-            $Cb.ToolTip = "$($App.Description)`nImpacto: $(if($App.Recommendation -eq 'caution'){'Requer cautela'}else{'Seguro'})"
+            $Cb.ToolTip = "$($App.Description)`nImpacto: $(if ($App.Recommendation -eq 'caution') { 'Requer cautela' } else { 'Seguro' })"
             $Cb.IsChecked = [bool]$App.SelectedByDefault
-
-            if ($App.Recommendation -eq "caution") {
-                $Cb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F39C12")
-            }
-
+            if ($App.Recommendation -eq 'caution') { $Cb.Foreground = ConvertTo-Brush '#F39C12' }
             $AppCheckBoxes.Add($Cb)
-            $AppsContainerList.Children.Add($Cb) | Out-Null
+            $C.AppsContainerList.Children.Add($Cb) | Out-Null
         }
     }
 
-    # 2. Renderizar Tweaks
-    foreach ($Tweak in $AllTweaks) {
-        $Cb = New-Object System.Windows.Controls.CheckBox
-        $Cb.Content = "$($Tweak.Name)"
-        $Cb.Tag = $Tweak
-        $Cb.ToolTip = "$($Tweak.Description)"
-        $Cb.IsChecked = [bool]$Tweak.SelectedByDefault
+    $PortableNotes = @{
+        'DisableFastStartup'            = 'Notebook detectado: apenas a Inicialização Rápida será desligada; a hibernação é mantida.'
+        'InjectUltimatePerformancePlan' = 'Notebook detectado: este ajuste será ignorado para preservar a bateria.'
+    }
 
-        $TweakCheckBoxes[$Tweak.Id] = $Cb
+    $CategoryIds = @($Catalog.Categories | ForEach-Object { $_.Id })
+    $OrderedCategories = @($Catalog.Categories) + @(
+        $Catalog.Tweaks | Where-Object { $CategoryIds -notcontains $_.Category } |
+            Select-Object -ExpandProperty Category -Unique | ForEach-Object { [pscustomobject]@{ Id = $_; Name = $_ } }
+    )
 
-        if ($Tweak.Category -in @("Privacy", "AI")) {
-            $PrivacyTweaksContainer.Children.Add($Cb) | Out-Null
-        } else {
-            $SystemTweaksContainer.Children.Add($Cb) | Out-Null
+    foreach ($Category in $OrderedCategories) {
+        $Tweaks = @($Catalog.Tweaks | Where-Object { $_.Category -eq $Category.Id })
+        if ($Tweaks.Count -eq 0) { continue }
+        $Container = if ($script:PrivacyPanelCategories -contains $Category.Id) { $C.PrivacyTweaksContainer } else { $C.SystemTweaksContainer }
+        $Container.Children.Add((& $NewHeader $Category.Name)) | Out-Null
+
+        foreach ($Tweak in $Tweaks) {
+            $Cb = New-Object System.Windows.Controls.CheckBox
+            $Cb.Content = "$($Tweak.Name)"
+            $Cb.Tag = $Tweak
+            $Tip = "$($Tweak.Description)"
+            if ($Context.IsPortable -and $PortableNotes.ContainsKey($Tweak.Id)) { $Tip += "`n$($PortableNotes[$Tweak.Id])" }
+            $Cb.ToolTip = $Tip
+            $Cb.IsChecked = [bool]$Tweak.SelectedByDefault
+            $TweakCheckBoxes.Add($Cb)
+            $Container.Children.Add($Cb) | Out-Null
         }
     }
 
-    # Função de Log com Dispatcher (Segura e fluida)
-    $AppendLog = {
-        param([string]$Text)
-        $Timestamp = Get-Date -Format "HH:mm:ss"
-        $LogOutputBox.AppendText("[$Timestamp] $Text`r`n")
-        $LogOutputBox.ScrollToEnd()
-        Invoke-DoEvents
-    }
-
-    $SetStatus = {
-        param([string]$Text)
-        $StatusBarText.Text = $Text
-        Invoke-DoEvents
-    }
-
-    # Busca em tempo real de apps
-    $AppSearchBox.Add_TextChanged({
-        $Filter = $AppSearchBox.Text.ToLower().Trim()
+    $C.AppSearchBox.Add_TextChanged({
+        $Filter = $C.AppSearchBox.Text.ToLower().Trim()
         foreach ($Cb in $AppCheckBoxes) {
-            $app = $Cb.Tag
-            $Match = ($app.FriendlyName.ToLower().Contains($Filter)) -or ($app.Description.ToLower().Contains($Filter))
+            $App = $Cb.Tag
+            $Match = ($App.FriendlyName.ToLower().Contains($Filter)) -or ($App.Description.ToLower().Contains($Filter))
             $Cb.Visibility = if ($Match) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
         }
     })
 
-    # Botões Rápidos
-    $BtnAppsSelectDefault.Add_Click({
+    $C.BtnAppsSelectDefault.Add_Click({
         foreach ($Cb in $AppCheckBoxes) { $Cb.IsChecked = [bool]$Cb.Tag.SelectedByDefault }
-        $StatusBarText.Text = "Seleção padrão de aplicativos carregada."
+        & $SetStatus 'Seleção padrão de aplicativos carregada.'
     })
-    $BtnAppsSelectAll.Add_Click({
+    $C.BtnAppsSelectAll.Add_Click({
         foreach ($Cb in $AppCheckBoxes) { $Cb.IsChecked = $true }
-        $StatusBarText.Text = "Todos os aplicativos marcados para remoção."
+        & $SetStatus 'Todos os aplicativos marcados para remoção.'
     })
-    $BtnAppsDeselectAll.Add_Click({
+    $C.BtnAppsDeselectAll.Add_Click({
         foreach ($Cb in $AppCheckBoxes) { $Cb.IsChecked = $false }
-        $StatusBarText.Text = "Todos os aplicativos desmarcados."
+        & $SetStatus 'Todos os aplicativos desmarcados.'
     })
 
-    # Carregar Presets
+    #endregion
+
+    #region Perfis
+
     $LoadPreset = {
         param([string]$PresetName)
-        $PresetPath = "$ScriptDir\Config\Presets\$PresetName.json"
-        if (Test-Path $PresetPath) {
-            $PresetJson = Get-Content -LiteralPath $PresetPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            
-            foreach ($Cb in $AppCheckBoxes) {
-                $Cb.IsChecked = ($PresetJson.RemoveApps -contains $Cb.Tag.Id)
-            }
+        try {
+            $PresetJson = Import-OptimizerPreset -Catalog $Catalog -NameOrPath $PresetName
+        } catch {
+            Write-OptimizerLog -Level ERRO -Message $_.Exception.Message
+            [System.Windows.MessageBox]::Show($_.Exception.Message, 'Perfil inválido', 'OK', 'Error') | Out-Null
+            return
+        }
+        foreach ($Cb in $AppCheckBoxes) { $Cb.IsChecked = (@($PresetJson.RemoveApps) -contains $Cb.Tag.Id) }
+        foreach ($Cb in $TweakCheckBoxes) { $Cb.IsChecked = (@($PresetJson.ApplyTweaks) -contains $Cb.Tag.Id) }
+        & $SetStatus "Perfil '$($PresetJson.DisplayName)' carregado: $(@($PresetJson.RemoveApps).Count) aplicativos e $(@($PresetJson.ApplyTweaks).Count) ajustes marcados. Revise as abas e clique em Executar."
+        Write-OptimizerLog -Level INFO -Message "Perfil '$($PresetJson.DisplayName)' carregado na interface."
+    }
 
-            foreach ($TweakId in $TweakCheckBoxes.Keys) {
-                $TweakCheckBoxes[$TweakId].IsChecked = ($PresetJson.ApplyTweaks -contains $TweakId)
-            }
+    $C.BtnPresetPadrao.Add_Click({ & $LoadPreset 'Padrao' })
+    $C.BtnPresetGamer.Add_Click({ & $LoadPreset 'Gamer' })
+    $C.BtnPresetCorp.Add_Click({ & $LoadPreset 'Corporativo' })
+    $C.BtnPresetExtremo.Add_Click({ & $LoadPreset 'Extremo' })
 
-            $StatusBarText.Text = "Perfil '$($PresetJson.DisplayName)' carregado com sucesso!"
-            & $AppendLog "Perfil '$($PresetJson.DisplayName)' aplicado na interface."
-            [System.Windows.MessageBox]::Show("Perfil '$($PresetJson.DisplayName)' carregado!`n`nVocê pode revisar os aplicativos e tweaks nas opções laterais antes de aplicar.", "Perfil Carregado", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+    #endregion
+
+    #region Execução em segundo plano
+
+    $LockableControls = @(
+        $C.BtnPresetPadrao, $C.BtnPresetGamer, $C.BtnPresetCorp, $C.BtnPresetExtremo,
+        $C.BtnAppsSelectDefault, $C.BtnAppsSelectAll, $C.BtnAppsDeselectAll, $C.AppSearchBox,
+        $C.AppsContainerList, $C.PrivacyTweaksContainer, $C.SystemTweaksContainer,
+        $C.ChkRestorePoint, $C.BtnUndoAction, $C.BtnApplyOptimization, $C.BtnCloseWindow
+    )
+
+    $SetBusy = {
+        param([bool]$Busy)
+        $State.Busy = $Busy
+        foreach ($Ctl in $LockableControls) { $Ctl.IsEnabled = -not $Busy }
+        $C.GlobalProgressBar.Visibility = if ($Busy) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+        if ($Busy) { $C.GlobalProgressBar.IsIndeterminate = $true }
+    }
+
+    $ProcessQueue = {
+        foreach ($QueueItem in (Receive-OptimizerBackgroundEvents -Task $State.Task)) {
+            if ($QueueItem.Type -eq 'Log') {
+                # O runspace já gravou a linha no arquivo: aqui só exibe no painel
+                $C.LogOutputBox.AppendText("[$($QueueItem.Time.ToString('HH:mm:ss'))] [$($QueueItem.Level)] $($QueueItem.Message)`r`n")
+                $C.LogOutputBox.ScrollToEnd()
+            } elseif ($QueueItem.Type -eq 'Progress' -and $QueueItem.Total -gt 0) {
+                $C.GlobalProgressBar.IsIndeterminate = $false
+                $C.GlobalProgressBar.Maximum = $QueueItem.Total
+                $C.GlobalProgressBar.Value = $QueueItem.Current
+                & $SetStatus "$($QueueItem.Activity) ($($QueueItem.Current)/$($QueueItem.Total))"
+            }
         }
     }
 
-    $BtnPresetPadrao.Add_Click({ & $LoadPreset "Padrao" })
-    $BtnPresetGamer.Add_Click({ & $LoadPreset "Gamer" })
-    $BtnPresetCorp.Add_Click({ & $LoadPreset "Corporativo" })
-    $BtnPresetExtremo.Add_Click({ & $LoadPreset "Extremo" })
+    $State.Timer = New-Object System.Windows.Threading.DispatcherTimer
+    $State.Timer.Interval = [TimeSpan]::FromMilliseconds(120)
+    $State.Timer.Add_Tick({
+        if ($null -eq $State.Task) { $State.Timer.Stop(); return }
+        & $ProcessQueue
+        if (-not (Test-OptimizerBackgroundTaskCompleted -Task $State.Task)) { return }
 
-    # Botão Undo
-    $BtnUndoAction.Add_Click({
-        $Confirm = [System.Windows.MessageBox]::Show("Deseja realmente restaurar as configurações padrão do Windows e reativar os serviços?", "Confirmar Restauração", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
-        if ($Confirm -eq [System.Windows.MessageBoxResult]::Yes) {
-            & $SwitchTab $NavBtnLogs $PanelLogs
-            & $AppendLog "Iniciando reversão de otimizações (Undo Engine)..."
-            $IsWin11 = ($CurrentOS -like "*Windows 11*")
-            Invoke-SystemUndoTweaks -IsWin11 $IsWin11
-            & $AppendLog "Restauração finalizada com sucesso."
-            [System.Windows.MessageBox]::Show("Configurações padrão restauradas com sucesso!", "Restauração Concluída", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+        $State.Timer.Stop()
+        & $ProcessQueue
+        $Completion = Complete-OptimizerBackgroundTask -Task $State.Task
+        $State.Task = $null
+        & $SetBusy $false
+        foreach ($ErrText in $Completion.Errors) { Write-OptimizerLog -Level ERRO -Message $ErrText }
+        & $State.OnComplete $Completion.Result
+    })
+
+    $StartTask = {
+        param([string]$Operation, [hashtable]$Arguments, [scriptblock]$OnComplete)
+        & $SetBusy $true
+        & $SwitchTab $C.NavBtnLogs $C.PanelLogs
+        $State.OnComplete = $OnComplete
+        $State.Task = Start-OptimizerBackgroundTask -ScriptDir $ScriptDir -LogFilePath $LogFilePath -Operation $Operation -Arguments $Arguments
+        $State.Timer.Start()
+    }
+
+    $OnOptimizeComplete = {
+        param($Result)
+        if ($null -eq $Result -or $Result.PSObject.Properties['Unexpected']) {
+            & $SetStatus 'A otimização foi interrompida por um erro inesperado.'
+            [System.Windows.MessageBox]::Show("A otimização foi interrompida por um erro inesperado.`n`nConsulte o log: $LogFilePath", 'Erro', 'OK', 'Error') | Out-Null
+            return
+        }
+        if ($Result.DryRun) {
+            $Text = "Simulação concluída: $($Result.Simulated) etapas seriam executadas. Nada foi alterado."
+            $Icon = 'Information'
+        } else {
+            $Text = "Otimização concluída: $($Result.Ok) OK, $($Result.Warnings) com aviso, $($Result.Failed) com erro."
+            $Icon = if ($Result.Failed -gt 0) { 'Warning' } else { 'Information' }
+        }
+        & $SetStatus $Text
+        [System.Windows.MessageBox]::Show("$Text`n`nLog detalhado: $LogFilePath", 'Otimização', 'OK', $Icon) | Out-Null
+    }
+
+    $OnRestorePointComplete = {
+        param($Result)
+        if ($null -ne $Result -and $Result.Success) {
+            & $StartTask 'Optimize' $State.PendingOptimize $OnOptimizeComplete
+            return
+        }
+        $Reason = if ($null -ne $Result) { $Result.Message } else { 'erro desconhecido' }
+        $Answer = [System.Windows.MessageBox]::Show("Não foi possível criar o Ponto de Restauração:`n$Reason`n`nDeseja continuar SEM ponto de restauração?", 'Ponto de Restauração', 'YesNo', 'Warning')
+        if ($Answer -eq [System.Windows.MessageBoxResult]::Yes) {
+            Write-OptimizerLog -Level AVISO -Message 'Continuando sem Ponto de Restauração por decisão do usuário.'
+            & $StartTask 'Optimize' $State.PendingOptimize $OnOptimizeComplete
+        } else {
+            Write-OptimizerLog -Level INFO -Message 'Otimização cancelada pelo usuário. Nada foi alterado.'
+            & $SetStatus 'Otimização cancelada (sem ponto de restauração).'
+        }
+    }
+
+    $OnUndoComplete = {
+        param($Result)
+        if ($null -eq $Result -or $Result.PSObject.Properties['Unexpected']) {
+            [System.Windows.MessageBox]::Show("A restauração foi interrompida por um erro inesperado.`n`nConsulte o log: $LogFilePath", 'Erro', 'OK', 'Error') | Out-Null
+            return
+        }
+        $Text = "Restauração concluída: $($Result.Restored) itens revertidos, $($Result.Failed) com erro."
+        if ($Result.Mode -eq 'Padroes') { $Text += "`nNenhum diário encontrado: foram restaurados os padrões do Windows." }
+        & $SetStatus ($Text -split "`n")[0]
+        $Icon = if ($Result.Failed -gt 0) { 'Warning' } else { 'Information' }
+        [System.Windows.MessageBox]::Show("$Text`n`nLog detalhado: $LogFilePath", 'Restauração', 'OK', $Icon) | Out-Null
+    }
+
+    $C.BtnApplyOptimization.Add_Click({
+        $AppIds = @($AppCheckBoxes | Where-Object { $_.IsChecked -eq $true } | ForEach-Object { $_.Tag.Id })
+        $TweakIds = @($TweakCheckBoxes | Where-Object { $_.IsChecked -eq $true } | ForEach-Object { $_.Tag.Id })
+        if ($AppIds.Count -eq 0 -and $TweakIds.Count -eq 0) {
+            [System.Windows.MessageBox]::Show('Nenhum aplicativo ou ajuste selecionado.', 'Nada a fazer', 'OK', 'Information') | Out-Null
+            return
+        }
+
+        $Question = "Serão removidos $($AppIds.Count) aplicativo(s) e aplicados $($TweakIds.Count) ajuste(s)."
+        if ($IsDryRun) { $Question += "`n`nMODO SIMULAÇÃO: nada será alterado." }
+        $Answer = [System.Windows.MessageBox]::Show("$Question`n`nDeseja continuar?", 'Confirmar Otimização', 'YesNo', 'Question')
+        if ($Answer -ne [System.Windows.MessageBoxResult]::Yes) { return }
+
+        $State.PendingOptimize = @{ AppIds = $AppIds; TweakIds = $TweakIds; Context = $Context; DryRun = $IsDryRun }
+        if ($C.ChkRestorePoint.IsChecked -eq $true -and -not $IsDryRun) {
+            & $StartTask 'RestorePoint' @{ Description = (New-RestorePointDescription -Label 'GUI') } $OnRestorePointComplete
+        } else {
+            if (-not $IsDryRun) { Write-OptimizerLog -Level AVISO -Message 'Ponto de Restauração desmarcado pelo usuário.' }
+            & $StartTask 'Optimize' $State.PendingOptimize $OnOptimizeComplete
         }
     })
 
-    # Abrir Logs
-    $BtnOpenLogsFolder.Add_Click({
-        $LogDir = "$ScriptDir\logs"
-        if (!(Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
-        Start-Process explorer.exe -ArgumentList "`"$LogDir`""
+    $C.BtnUndoAction.Add_Click({
+        $Answer = [System.Windows.MessageBox]::Show('Deseja restaurar as configurações anteriores às otimizações?', 'Confirmar Restauração', 'YesNo', 'Question')
+        if ($Answer -ne [System.Windows.MessageBoxResult]::Yes) { return }
+        $UndoArgs = @{ JournalDirectory = $Context.JournalDirectory; IsWin11 = $Context.IsWin11; UserSid = $Context.UserSid; DryRun = $IsDryRun }
+        & $StartTask 'Undo' $UndoArgs $OnUndoComplete
     })
 
-    # Botão Fechar
-    $BtnCloseWindow.Add_Click({ $Window.Close() })
+    #endregion
 
-    # EXECUÇÃO DE OTIMIZAÇÃO COM RESPONSIVIDADE EM TEMPO REAL E DISPATCHER PUMPING (ZERO TRAVAMENTOS)
-    $BtnApplyOptimization.Add_Click({
-        $BtnApplyOptimization.IsEnabled = $false
-        $GlobalProgressBar.Visibility = [System.Windows.Visibility]::Visible
-        $GlobalProgressBar.IsIndeterminate = $true
-        
-        # Muda automaticamente para a aba de Logs para o usuário acompanhar tudo acontecendo ao vivo!
-        & $SwitchTab $NavBtnLogs $PanelLogs
+    #region Janela
 
-        & $SetStatus "Otimizando o sistema em segundo plano..."
-        & $AppendLog "=== INICIANDO PROTOCOLO DE OTIMIZAÇÃO ==="
-
-        # Coleta de Parâmetros da UI
-        $DoRestorePoint = ($ChkRestorePoint.IsChecked -eq $true)
-        $SelectedAppObjects = @()
-        foreach ($Cb in $AppCheckBoxes) {
-            if ($Cb.IsChecked -eq $true) {
-                $SelectedAppObjects += $Cb.Tag
-            }
-        }
-
-        $TweaksState = @{}
-        foreach ($k in $TweakCheckBoxes.Keys) {
-            $TweaksState[$k] = [bool]$TweakCheckBoxes[$k].IsChecked
-        }
-
-        Invoke-DoEvents
-
-        # 1. Ponto de Restauração (Execução não-bloqueante a 60 FPS)
-        if ($DoRestorePoint) {
-            & $AppendLog "Criando Ponto de Restauração do Windows (Proteção de Sistema)..."
-            & $SetStatus "Criando Ponto de Restauração..."
-            Invoke-DoEvents
-            Invoke-SystemRestorePoint -Description "Pre_Debloat_GUI" | Out-Null
-            & $AppendLog "Ponto de Restauração concluído com êxito."
-            Invoke-DoEvents
-        }
-
-        # 2. Remoção de Apps com Pré-Cache Rápido e Barra de Progresso Real
-        if ($SelectedAppObjects.Count -gt 0) {
-            & $AppendLog "Removendo $($SelectedAppObjects.Count) aplicativos selecionados..."
-            
-            $GlobalProgressBar.IsIndeterminate = $false
-            $GlobalProgressBar.Minimum = 0
-            $GlobalProgressBar.Maximum = $SelectedAppObjects.Count
-            $GlobalProgressBar.Value = 0
-
-            # Pré-carregar pacotes provisionados uma única vez para performance instantânea
-            $CachedProv = @()
-            try {
-                $CachedProv = @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue)
-            } catch {}
-
-            $CurIndex = 0
-            $TotApps = $SelectedAppObjects.Count
-            foreach ($AppObj in $SelectedAppObjects) {
-                $CurIndex++
-                $GlobalProgressBar.Value = $CurIndex
-                & $SetStatus "Removendo: $($AppObj.FriendlyName) ($CurIndex/$TotApps)"
-                & $AppendLog "  [$CurIndex/$TotApps] Removendo: $($AppObj.FriendlyName)..."
-                Invoke-DoEvents
-                
-                Remove-AppByDefinition -AppInfo $AppObj -CachedProvisioned $CachedProv
-                Invoke-DoEvents
-            }
-            $GlobalProgressBar.IsIndeterminate = $true
-        }
-
-        # Remoção OneDrive
-        & $AppendLog "Limpando Microsoft OneDrive..."
-        & $SetStatus "Removendo Microsoft OneDrive..."
-        Invoke-DoEvents
-        Remove-OneDriveDeep
-        Invoke-DoEvents
-
-        # 3. Tweaks de Privacidade e IA
-        if ($TweaksState["DisableTelemetry"]) {
-            & $AppendLog "Desativando Telemetria e Diagnósticos..."
-            & $SetStatus "Desativando Telemetria..."
-            Invoke-DoEvents
-            Disable-SystemTelemetry
-        }
-
-        if ($TweaksState["DisableRecallAndAI"] -or $TweaksState["DisableCopilot"]) {
-            & $AppendLog "Bloqueando Windows Recall, Click-to-Do e Copilot..."
-            & $SetStatus "Bloqueando Recursos de IA..."
-            Invoke-DoEvents
-            $IsWin11 = ($CurrentOS -like "*Windows 11*")
-            Disable-WindowsAIAndRecall -IsWin11 $IsWin11
-        }
-
-        if ($TweaksState["DisableWindowsSuggestions"]) {
-            & $AppendLog "Desativando Sugestões e Anúncios do Windows..."
-            & $SetStatus "Desativando Sugestões e Anúncios..."
-            Invoke-DoEvents
-            Disable-WindowsSuggestionsAndAds
-        }
-
-        if ($TweaksState["DisableEdgeBackgroundAndAds"]) {
-            & $AppendLog "Desativando background e anúncios do Edge..."
-            & $SetStatus "Ajustando Microsoft Edge..."
-            Invoke-DoEvents
-            Disable-EdgeBackgroundAndTelemetry
-        }
-
-        # 4. Jogos e Xbox
-        if ($TweaksState["DisableGameDVR"]) {
-            & $AppendLog "Desativando gravação em segundo plano (GameDVR)..."
-            & $SetStatus "Desativando GameDVR..."
-            Invoke-DoEvents
-            Disable-GameDVRBackgroundCapture
-        }
-
-        $XboxSelected = $SelectedAppObjects | Where-Object { $_.Id -eq "XboxGamingOverlay" }
-        if ($null -ne $XboxSelected -or $TweaksState["FixGameBarProtocols"]) {
-            & $AppendLog "Aplicando Null-Routing nos protocolos ms-gamingoverlay (Anti-Popup Fix)..."
-            & $SetStatus "Aplicando correção de protocolos do Xbox..."
-            Invoke-DoEvents
-            Apply-GameBarProtocolNullRoute
-        }
-
-        # 5. Performance e Interface
-        if ($TweaksState["RestoreClassicContextMenu"] -or $TweaksState["ShowFileExtensions"]) {
-            & $AppendLog "Ajustando interface do Windows Explorer..."
-            & $SetStatus "Configurando Explorer..."
-            Invoke-DoEvents
-            $IsWin11 = ($CurrentOS -like "*Windows 11*")
-            Set-ExplorerAndUITweaks -IsWin11 $IsWin11
-        }
-
-        if ($TweaksState["InjectUltimatePerformancePlan"] -or $TweaksState["DisableFastStartup"] -or $TweaksState["OptimizeVisualEffects"]) {
-            & $AppendLog "Aplicando plano Ultimate Performance e ajustes de energia..."
-            & $SetStatus "Aplicando Ultimate Performance..."
-            Invoke-DoEvents
-            Set-PowerAndPerformanceTweaks
-        }
-
-        if ($TweaksState["DisableSysMainAndWSearch"]) {
-            & $AppendLog "Desativando SysMain e Windows Search..."
-            & $SetStatus "Desativando SysMain e WSearch..."
-            Invoke-DoEvents
-            Disable-LegacyHeavyServices
-        }
-
-        if ($TweaksState["ForceUninstallEdge"]) {
-            & $AppendLog "Desinstalando Microsoft Edge profundamente..."
-            & $SetStatus "Removendo Microsoft Edge..."
-            Invoke-DoEvents
-            Invoke-EdgeForceRemoveClean
-        }
-
-        # 6. Limpeza e Finalização
-        & $AppendLog "Limpando arquivos temporários (%TEMP%)..."
-        & $SetStatus "Limpando temporários..."
-        Invoke-DoEvents
-        Clear-SystemTempFiles
-
-        & $AppendLog "Reiniciando Windows Explorer..."
-        & $SetStatus "Reiniciando Explorer..."
-        Invoke-DoEvents
-        Restart-WindowsExplorer
-
-        & $AppendLog "=== OTIMIZAÇÃO CONCLUÍDA COM SUCESSO ==="
-        & $SetStatus "Otimização concluída com sucesso!"
-        $GlobalProgressBar.Visibility = [System.Windows.Visibility]::Collapsed
-        $BtnApplyOptimization.IsEnabled = $true
-
-        [System.Windows.MessageBox]::Show("Otimização concluída com sucesso!`n`nO Windows Explorer foi reiniciado para aplicar as alterações.", "Otimização Concluída", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
+    $C.BtnOpenLogsFolder.Add_Click({
+        Start-Process explorer.exe -ArgumentList "`"$(Split-Path -Parent $LogFilePath)`""
     })
 
+    $C.BtnCloseWindow.Add_Click({ $Window.Close() })
+
+    $Window.Add_Closing({
+        param($WindowSender, $CloseArgs)
+        if ($State.Busy) {
+            $CloseArgs.Cancel = $true
+            [System.Windows.MessageBox]::Show('Aguarde o término da operação em andamento antes de fechar.', 'Operação em andamento', 'OK', 'Warning') | Out-Null
+        }
+    })
+
+    #endregion
+
+    Write-OptimizerLog -Level INFO -Message "Janela aberta. Log desta sessão: $LogFilePath"
     $Window.ShowDialog() | Out-Null
 }

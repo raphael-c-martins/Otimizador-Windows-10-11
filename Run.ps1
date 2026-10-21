@@ -1,19 +1,31 @@
 ﻿<#
 .SYNOPSIS
-    Orquestrador Principal da Engine de Otimização e Debloat do Windows (v13.0).
+    Orquestrador Principal do Otimizador de Windows.
 .DESCRIPTION
-    Ponto de entrada nativo em PowerShell com inicialização padrão na Janela Gráfica (GUI WPF)
-    e suporte a modo Terminal interativo (-CLI) e parâmetros de linha de comando.
+    Abre a janela gráfica (GUI WPF) por padrão. Também oferece modo terminal interativo (-CLI),
+    automação por perfil (-Preset/-Silent), simulação sem alterações (-DryRun) e reversão (-Undo).
+
+    Códigos de saída: 0 = sucesso | 1 = erro de uso/permissão | 2 = concluído com etapas com erro |
+                      3 = abortado porque o Ponto de Restauração não pôde ser criado.
+.EXAMPLE
+    .\Run.ps1 -Preset Gamer -Silent
+.EXAMPLE
+    .\Run.ps1 -Preset Padrao -DryRun
+.EXAMPLE
+    .\Run.ps1 -Preset C:\Perfis\MeuPerfil.json -CLI
 #>
 
 [CmdletBinding()]
 param(
     [switch]$CLI,
-    [string]$Preset = "",
+    [string]$Preset = '',
     [switch]$Silent,
     [switch]$SkipRestorePoint,
+    [switch]$ContinueWithoutRestorePoint,
     [switch]$Undo,
-    [string]$CustomApps = ""
+    [string]$CustomApps = '',
+    [switch]$DryRun,
+    [switch]$LaunchedHidden
 )
 
 # Forçar codificação UTF-8 no Console e no Pipeline do PowerShell
@@ -23,257 +35,241 @@ try {
     $OutputEncoding           = [System.Text.Encoding]::UTF8
 } catch {}
 
-$ErrorActionPreference = "Continue"
+$ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# 1. Carregar Módulos do Core, UI e Threading
-. "$ScriptDir\src\Core\ThreadingManager.ps1"
-. "$ScriptDir\src\UI\ConsoleTUI.ps1"
-. "$ScriptDir\src\UI\AppSelectionModal.ps1"
-. "$ScriptDir\src\UI\MainWindowGUI.ps1"
-. "$ScriptDir\src\Core\BackupManager.ps1"
-. "$ScriptDir\src\Core\AppManager.ps1"
-. "$ScriptDir\src\Core\GamingManager.ps1"
-. "$ScriptDir\src\Core\PrivacyManager.ps1"
-. "$ScriptDir\src\Core\PerformanceManager.ps1"
-. "$ScriptDir\src\Core\UndoManager.ps1"
+# 1. Carregar módulos (Core primeiro: a UI usa suas funções)
+foreach ($ModuleFolder in @('src\Core', 'src\UI')) {
+    foreach ($ModuleFile in (Get-ChildItem -LiteralPath (Join-Path $ScriptDir $ModuleFolder) -Filter '*.ps1' | Sort-Object Name)) {
+        . $ModuleFile.FullName
+    }
+}
 
-# 2. Inicializar Diretório de Logs
-$LogDir = "$ScriptDir\logs"
-if (!(Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
-$HostName = $env:COMPUTERNAME
-$Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
-$LogPath = "$LogDir\Otimizacao_${HostName}_${Timestamp}.log"
+$Interactive = -not $Silent
+$UseGui = (-not $CLI -and -not $Silent -and -not $Undo -and [string]::IsNullOrWhiteSpace($Preset))
 
-Start-Transcript -Path $LogPath -Append -Force | Out-Null
+# 2. Validação dos parâmetros
+if ($Silent -and -not $Undo -and [string]::IsNullOrWhiteSpace($Preset)) {
+    Write-Host '[ERRO] -Silent exige -Preset <nome ou arquivo .json> (ou -Undo). Nada foi alterado.' -ForegroundColor Red
+    exit $script:ExitCodes.ErroDeUso
+}
 
-# 3. Detectar Sistema Operacional com Precisão de Build
-$IsWin11 = $false
-$OSCaption = "Windows"
+# 3. Privilégio de Administrador (a simulação não altera o sistema e dispensa elevação)
+if (-not $DryRun -and -not (Test-IsAdministrator)) {
+    if ($Silent) {
+        Write-Host '[ERRO] Execute em um PowerShell aberto como Administrador. Nada foi alterado.' -ForegroundColor Red
+        exit $script:ExitCodes.ErroDeUso
+    }
+
+    Write-Host ' [!] Solicitando permissão de Administrador...' -ForegroundColor Cyan
+    $ArgList = [System.Collections.Generic.List[string]]::new()
+    $ArgList.AddRange([string[]]@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`""))
+    foreach ($Param in $PSBoundParameters.GetEnumerator()) {
+        if ($Param.Value -is [System.Management.Automation.SwitchParameter]) {
+            if ($Param.Value.IsPresent) { $ArgList.Add("-$($Param.Key)") }
+        } else {
+            $ArgList.Add("-$($Param.Key)")
+            $ArgList.Add("`"$($Param.Value)`"")
+        }
+    }
+    try {
+        Start-Process -FilePath 'powershell.exe' -ArgumentList ($ArgList -join ' ') -Verb RunAs -ErrorAction Stop
+        exit $script:ExitCodes.Sucesso
+    } catch {
+        Write-Host '[ERRO] A permissão de Administrador foi negada. Nada foi alterado.' -ForegroundColor Red
+        exit $script:ExitCodes.ErroDeUso
+    }
+}
+
+# 4. Pastas de dados (logs e diários de alteração) e log da sessão
+$DataRoot = if ($DryRun) { $script:OptimizerDryRunRoot } else { $script:OptimizerDataRoot }
 try {
-    $OSObj = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
-    $OSCaption = $OSObj.Caption
-    $BuildNumber = [int]$OSObj.BuildNumber
-    if ($BuildNumber -ge 22000) { 
-        $IsWin11 = $true 
+    if ($DryRun) {
+        if (-not (Test-Path -LiteralPath $DataRoot)) { New-Item -ItemType Directory -Path $DataRoot -Force | Out-Null }
     } else {
-        if ($OSCaption -like "*Windows 11*") { $IsWin11 = $true }
+        Initialize-SecureDataDirectory -Path $DataRoot
     }
 } catch {
-    if ([Environment]::OSVersion.Version.Build -ge 22000) { $IsWin11 = $true }
+    Write-Host "[ERRO] Não foi possível preparar a pasta de dados '$DataRoot': $($_.Exception.Message)" -ForegroundColor Red
+    exit $script:ExitCodes.ErroDeUso
 }
 
-# 4. Modo Desfazer (Undo via CLI)
-if ($Undo) {
-    Draw-MainHeader -SubTitle "MODO DE RESTAURAÇÃO DO SISTEMA (UNDO)"
-    Invoke-SystemUndoTweaks -IsWin11 $IsWin11
-    Stop-Transcript | Out-Null
-    exit 0
+$LogDir = Join-Path $DataRoot 'logs'
+$JournalDir = Join-Path $DataRoot 'estado'
+$LogPath = New-OptimizerLogFile -Directory $LogDir
+
+$ConsoleSink = { param($Level, $Message) Write-ConsoleLogEntry -Level $Level -Message $Message }
+$ConsoleProgress = { param($Current, $Total, $Activity) Write-ConsoleProgress -Current $Current -Total $Total -Activity $Activity }
+if ($UseGui) {
+    Set-OptimizerLogTarget -FilePath $LogPath
+} else {
+    Set-OptimizerLogTarget -FilePath $LogPath -Sink $ConsoleSink -ProgressSink $ConsoleProgress
 }
 
-# 5. Carregar Catálogo de Apps e Tweaks
-$AppsJsonPath = "$ScriptDir\Config\Apps.json"
-$TweaksJsonPath = "$ScriptDir\Config\Tweaks.json"
+try {
+    # 5. Ambiente
+    $OS = Get-OSInfo
+    $IsPortable = Test-IsPortableDevice
+    $UserTarget = if ($DryRun) {
+        [pscustomobject]@{ Sid = $null; Message = 'Simulação: nenhum perfil de usuário será alterado.'; IsWarning = $false }
+    } else {
+        Resolve-UserRegistrySid
+    }
 
-$AllApps = @()
-if (Test-Path $AppsJsonPath) {
-    $AppsConfig = Get-Content -LiteralPath $AppsJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $AllApps = $AppsConfig.Apps
+    Write-OptimizerLog -Level INFO -Message "Otimizador de Windows v$script:OptimizerVersion | $($OS.Caption) (build $($OS.Build)) | $(if ($IsPortable) { 'Notebook' } else { 'Desktop' })$(if ($DryRun) { ' | MODO SIMULAÇÃO' })"
+    Write-OptimizerLog -Level $(if ($UserTarget.IsWarning) { 'AVISO' } else { 'INFO' }) -Message $UserTarget.Message
+
+    $Context = @{
+        IsWin11          = $OS.IsWin11
+        IsPortable       = $IsPortable
+        ProtectedPaths   = @($ScriptDir, $DataRoot)
+        StateDirectory   = $DataRoot
+        JournalDirectory = $JournalDir
+        UserSid          = $UserTarget.Sid
+    }
+
+    $Catalog = Get-OptimizerCatalog -ScriptDir $ScriptDir
+} catch {
+    Write-OptimizerLog -Level ERRO -Message "Falha ao inicializar: $($_.Exception.Message)"
+    exit $script:ExitCodes.ErroDeUso
 }
 
-$AllTweaks = @()
-if (Test-Path $TweaksJsonPath) {
-    $TweaksConfig = Get-Content -LiteralPath $TweaksJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $AllTweaks = $TweaksConfig.Tweaks
+# 6. Modo Desfazer (Undo)
+function Invoke-UndoFlow {
+    Show-MainHeader -SubTitle 'RESTAURAÇÃO DO SISTEMA (UNDO)'
+    Set-UserRegistryTarget -Sid $Context.UserSid
+    $UndoResult = Invoke-SystemUndo -JournalDirectory $JournalDir -IsWin11 $OS.IsWin11 -DryRun:$DryRun
+    $Color = if ($UndoResult.Failed -gt 0) { 'Yellow' } else { 'Green' }
+    Write-Host "`n Restauração: $($UndoResult.Restored) itens revertidos, $($UndoResult.Failed) com erro. Log: $LogPath" -ForegroundColor $Color
+    if ($Interactive) { Read-Host "`n Pressione ENTER para sair" | Out-Null }
+    if ($UndoResult.Failed -gt 0) { exit $script:ExitCodes.FalhasParciais }
+    exit $script:ExitCodes.Sucesso
 }
 
-# 6. DECISÃO DE MODO: GUI (PADRÃO) vs CLI vs SILENT
-if (-not $CLI -and [string]::IsNullOrWhiteSpace($Preset) -and -not $Silent) {
+if ($Undo) { Invoke-UndoFlow }
+
+# 7. Janela gráfica (padrão)
+if ($UseGui) {
     try {
-        # Inicialização da Janela Gráfica Principal (GUI Moderna)
-        Show-MainOptimizerWindow -AllApps $AllApps -AllTweaks $AllTweaks -CurrentOS $OSCaption -ScriptDir $ScriptDir
-        Stop-Transcript | Out-Null
-        exit 0
+        Show-MainOptimizerWindow -Catalog $Catalog -Context $Context -ScriptDir $ScriptDir -LogFilePath $LogPath -OSCaption $OS.Caption -DryRun:$DryRun
+        exit $script:ExitCodes.Sucesso
     } catch {
-        Write-Host "`n [AVISO] A interface gráfica não pôde ser iniciada ($($_.Exception.Message))." -ForegroundColor Yellow
-        Write-Host "         Iniciando automaticamente no modo de console (TUI)...`n" -ForegroundColor Gray
+        Write-OptimizerLog -Level ERRO -Message "A interface gráfica não pôde ser iniciada: $($_.Exception.Message)"
+        if ($LaunchedHidden) {
+            # Esta janela está oculta (aberta pelo Otimizador.cmd): reabre o modo terminal em um console visível
+            $FallbackArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -CLI$(if ($DryRun) { ' -DryRun' })"
+            Start-Process -FilePath 'powershell.exe' -ArgumentList $FallbackArgs
+            exit $script:ExitCodes.ErroDeUso
+        }
+        Write-Host "`n [AVISO] Iniciando no modo terminal...`n" -ForegroundColor Yellow
+        Set-OptimizerLogTarget -FilePath $LogPath -Sink $ConsoleSink -ProgressSink $ConsoleProgress
         Start-Sleep -Seconds 2
     }
 }
 
-# 7. MODO CONSOLE (TUI / CLI)
-$SelectedPresetName = "Padrao"
-$SelectedAppsIds = @()
-$AgressividadeExtrema = $false
+# 8. Modo terminal (interativo ou automatizado)
+try {
+    if ([string]::IsNullOrWhiteSpace($Preset)) {
+        $PresetMenu = [ordered]@{ '1' = 'Padrao'; '2' = 'Gamer'; '3' = 'Corporativo'; '4' = 'Extremo' }
+        $SelectedName = $null
+        while (-not $SelectedName) {
+            Show-MainHeader -SubTitle "PROTOCOLO DE OTIMIZAÇÃO & DEBLOAT (v$script:OptimizerVersion)$(if ($DryRun) { ' [SIMULAÇÃO]' })"
+            Write-Host "$($script:C_GN)>> PASSO 1: SELECIONE O PERFIL DE OTIMIZAÇÃO$($script:C_RST)`n"
+            Write-Host "$($script:C_W) [1] PADRÃO (Recomendado / Equilibrado)$($script:C_RST)"
+            Write-Host "     - Limpeza de bloatware, desativação de telemetria e ajustes de interface e energia.`n"
+            Write-Host "$($script:C_C) [2] GAMER (Otimizado p/ Jogos & FPS)$($script:C_RST)"
+            Write-Host "     - Preserva Game Pass, Xbox App e players de mídia, desativa GameDVR e ativa Ultimate Performance.`n"
+            Write-Host "$($script:C_P) [3] CORPORATIVO (Escritório & Produtividade)$($script:C_RST)"
+            Write-Host "     - Preserva Teams, Outlook e OneDrive, remove jogos e desativa telemetria/IA.`n"
+            Write-Host "$($script:C_R) [4] EXTREMO (Desempenho Máximo p/ Hardware Antigo)$($script:C_RST)"
+            Write-Host "     - Desativa SysMain/WSearch, remove OneDrive e Microsoft Edge.`n"
+            Write-Host "$($script:C_Y) [5] RESTAURAR / DESFAZER OTIMIZAÇÕES (Undo)$($script:C_RST)"
+            Write-Host "     - Devolve registro, serviços, tarefas e energia ao estado anterior às otimizações.`n"
 
-if ($CLI -or ([string]::IsNullOrWhiteSpace($Preset) -and -not $Silent)) {
-    $MenuLoop = $true
-    while ($MenuLoop) {
-        Draw-MainHeader
-        Write-Host "$($script:C_GN)>> PASSO 1: SELECIONE O PERFIL DE OTIMIZAÇÃO$($script:C_RST)`n"
-        Write-Host "$($script:C_W) [1] PADRÃO (Recomendado / Equilibrado)$($script:C_RST)"
-        Write-Host "     - Limpeza de bloatware, desativação de telemetria e otimizações de CPU/RAM.`n"
-        Write-Host "$($script:C_C) [2] GAMER (Otimizado p/ Jogos & FPS)$($script:C_RST)"
-        Write-Host "     - Preserva Game Pass, Xbox App e players de mídia, desativa GameDVR e ativa Ultimate Performance.`n"
-        Write-Host "$($script:C_P) [3] CORPORATIVO (Escritório & Produtividade)$($script:C_RST)"
-        Write-Host "     - Foco em trabalho: Preserva Teams e Office, remove jogos e desativa telemetria/IA.`n"
-        Write-Host "$($script:C_R) [4] EXTREMO (Desempenho Máximo p/ Hardware Antigo)$($script:C_RST)"
-        Write-Host "     - Desativa SysMain/WSearch, remove Microsoft Edge e bloqueia todos os extras.`n"
-        Write-Host "$($script:C_Y) [5] RESTAURAR / DESFAZER OTIMIZAÇÕES (Undo)$($script:C_RST)"
-        Write-Host "     - Reativa serviços padrão, restaura menu do Win11 e protocolos do Xbox.`n"
-
-        $Escolha = Read-Host "$($script:C_C) [?] Digite sua opção (1-5)$($script:C_RST)"
-        
-        switch ($Escolha) {
-            '1' { $SelectedPresetName = "Padrao"; $MenuLoop = $false }
-            '2' { $SelectedPresetName = "Gamer"; $MenuLoop = $false }
-            '3' { $SelectedPresetName = "Corporativo"; $MenuLoop = $false }
-            '4' { $SelectedPresetName = "Extremo"; $AgressividadeExtrema = $true; $MenuLoop = $false }
-            '5' { 
-                Draw-MainHeader -SubTitle "RESTAURAÇÃO DO SISTEMA"
-                Invoke-SystemUndoTweaks -IsWin11 $IsWin11
-                Stop-Transcript | Out-Null
-                Write-Host "`n$($script:C_GN)[ SUCESSO ] Configurações restauradas com êxito.$($script:C_RST)"
-                Write-Host "$($script:C_Y)>> Pressione ENTER para sair...$($script:C_RST)"
-                Read-Host
-                exit 0
-            }
-            default {
+            $Choice = Read-Host "$($script:C_C) [?] Digite sua opção (1-5)$($script:C_RST)"
+            if ($Choice -eq '5') { Invoke-UndoFlow }
+            if ($PresetMenu.Contains($Choice)) {
+                $SelectedName = $PresetMenu[$Choice]
+            } else {
                 Write-Host "`n$($script:C_R) [!] Opção inválida, por favor selecione um número de 1 a 5.$($script:C_RST)"
                 Start-Sleep -Seconds 2
             }
         }
+        $SelectedPreset = Import-OptimizerPreset -Catalog $Catalog -NameOrPath $SelectedName
+        $AppIds = @($SelectedPreset.RemoveApps)
+
+        # Passo 2: personalização granular dos aplicativos (janela WPF de seleção)
+        Show-MainHeader
+        Write-Host "$($script:C_C) [ INFO ] Perfil selecionado: $($SelectedPreset.DisplayName)$($script:C_RST)`n"
+        Write-Host "$($script:C_GN)>> PASSO 2: PERSONALIZAÇÃO DE APLICATIVOS (DEBLOAT)$($script:C_RST)`n"
+        if (Read-YesNo -Prompt 'Deseja abrir a janela para marcar/desmarcar aplicativos individualmente?') {
+            $CustomSelection = Show-AppSelectionDialog -AllApps $Catalog.Apps -InitiallySelectedIds $AppIds
+            if ($null -ne $CustomSelection) { $AppIds = @($CustomSelection) }
+        }
+    } else {
+        $SelectedPreset = Import-OptimizerPreset -Catalog $Catalog -NameOrPath $Preset
+        $AppIds = @($SelectedPreset.RemoveApps)
     }
 
-    # Carregar Preset Escolhido
-    $PresetFile = "$ScriptDir\Config\Presets\$SelectedPresetName.json"
-    if (Test-Path $PresetFile) {
-        $PresetData = Get-Content -LiteralPath $PresetFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        $SelectedAppsIds = @($PresetData.RemoveApps)
-    }
-
-    # PASSO 2: Pergunta de Personalização Granular (Abrir Janela WPF de Seleção)
-    Draw-MainHeader
-    Write-Host "$($script:C_C) [ INFO ] Perfil selecionado: $($SelectedPresetName.ToUpper())$($script:C_RST)`n"
-    Write-Host "$($script:C_GN)>> PASSO 2: PERSONALIZAÇÃO DE APLICATIVOS (DEBLOAT)$($script:C_RST)`n"
-    Write-Host "$($script:C_W) Deseja abrir a janela gráfica para marcar/desmarcar aplicativos individualmente?"
-    Write-Host " (Ex: escolher manter ou remover Xbox Game Bar, Teams, Spotify, etc.)$($script:C_RST)`n"
-    Write-Host "  [S] Sim, abrir seletor gráfico de aplicativos (WPF)"
-    Write-Host "  [N] Não, aplicar a lista padrão recomendada do perfil`n"
-    
-    $CustomOpt = Read-Host "$($script:C_C) [?] Deseja personalizar? (S/N)$($script:C_RST)"
-    if ($CustomOpt -match '^[SsYy]$') {
-        Write-Host "`n$($script:C_G) [..] Abrindo interface gráfica de seleção...$($script:C_RST)"
-        $CustomSelection = Show-AppSelectionDialog -AllApps $AllApps -InitiallySelectedIds $SelectedAppsIds
-        if ($null -ne $CustomSelection) {
-            $SelectedAppsIds = $CustomSelection
-        }
-    }
-} else {
-    # Modo CLI / Não-Interativo
-    if (-not [string]::IsNullOrWhiteSpace($Preset)) {
-        $SelectedPresetName = $Preset
-        $PresetFile = "$ScriptDir\Config\Presets\$SelectedPresetName.json"
-        if (Test-Path $PresetFile) {
-            $PresetData = Get-Content -LiteralPath $PresetFile -Raw -Encoding UTF8 | ConvertFrom-Json
-            $SelectedAppsIds = @($PresetData.RemoveApps)
-        }
-    }
     if (-not [string]::IsNullOrWhiteSpace($CustomApps)) {
-        $SelectedAppsIds = $CustomApps -split ',' | ForEach-Object { $_.Trim() }
+        $AppIds = @($CustomApps -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    }
+    $TweakIds = @($SelectedPreset.ApplyTweaks)
+    Assert-OptimizerSelection -Catalog $Catalog -AppIds $AppIds -TweakIds $TweakIds
+} catch {
+    Write-OptimizerLog -Level ERRO -Message $_.Exception.Message
+    exit $script:ExitCodes.ErroDeUso
+}
+
+$PresetLabel = if ([string]::IsNullOrWhiteSpace($SelectedPreset.PresetName)) { 'Personalizado' } else { $SelectedPreset.PresetName }
+
+# 9. Confirmação (modo interativo)
+if ($Interactive) {
+    Show-MainHeader -SubTitle "CONFIRMAÇÃO: $($SelectedPreset.DisplayName)"
+    Write-Host "$($script:C_W) Aplicativos a remover ($($AppIds.Count)):$($script:C_RST)"
+    foreach ($App in $Catalog.Apps | Where-Object { $AppIds -contains $_.Id }) { Write-Host "$($script:C_G)   - $($App.FriendlyName)$($script:C_RST)" }
+    Write-Host "`n$($script:C_W) Ajustes a aplicar ($($TweakIds.Count)):$($script:C_RST)"
+    foreach ($Tweak in $Catalog.Tweaks | Where-Object { $TweakIds -contains $_.Id }) { Write-Host "$($script:C_G)   - $($Tweak.Name)$($script:C_RST)" }
+    Write-Host ''
+    if (-not (Read-YesNo -Prompt "Confirmar a execução$(if ($DryRun) { ' da SIMULAÇÃO' })?")) {
+        Write-OptimizerLog -Level INFO -Message 'Execução cancelada pelo usuário. Nada foi alterado.'
+        exit $script:ExitCodes.Sucesso
+    }
+    Show-MainHeader -SubTitle "EXECUTANDO: $($SelectedPreset.DisplayName)$(if ($DryRun) { ' [SIMULAÇÃO]' })"
+}
+
+# 10. Ponto de Restauração
+if ($DryRun) {
+    Write-OptimizerLog -Level INFO -Message '[SIMULAÇÃO] Ponto de Restauração não criado.'
+} elseif ($SkipRestorePoint) {
+    Write-OptimizerLog -Level AVISO -Message 'Ponto de Restauração ignorado a pedido (-SkipRestorePoint).'
+} else {
+    try {
+        Invoke-SystemRestorePoint -Description (New-RestorePointDescription -Label $PresetLabel) | Out-Null
+    } catch {
+        Write-OptimizerLog -Level ERRO -Message "Ponto de Restauração não criado: $($_.Exception.Message)"
+        $ContinueAnyway = [bool]$ContinueWithoutRestorePoint
+        if (-not $ContinueAnyway -and $Interactive) {
+            $ContinueAnyway = Read-YesNo -Prompt 'Continuar SEM ponto de restauração?'
+        }
+        if (-not $ContinueAnyway) {
+            Write-OptimizerLog -Level AVISO -Message 'Otimização abortada para manter a segurança do sistema. Nada foi alterado.'
+            exit $script:ExitCodes.AbortadoSemBackup
+        }
+        Write-OptimizerLog -Level AVISO -Message 'Continuando sem Ponto de Restauração por decisão do usuário.'
     }
 }
 
-# 8. EXECUÇÃO DAS OTIMIZAÇÕES (FLUXO CONSOLE/CLI)
-Draw-MainHeader -SubTitle "EXECUTANDO OTIMIZAÇÃO: $($SelectedPresetName.ToUpper())"
-
-# A. Criar Ponto de Restauração
-if (-not $SkipRestorePoint) {
-    Executar-Etapa "Criar Ponto de Restauração do Sistema" {
-        Invoke-SystemRestorePoint -Description "Pre_Debloat_$SelectedPresetName"
-    }
+# 11. Execução pelo motor único
+try {
+    $Result = Invoke-OptimizationPlan -Catalog $Catalog -AppIds $AppIds -TweakIds $TweakIds -Context $Context -DryRun:$DryRun
+} catch {
+    Write-OptimizerLog -Level ERRO -Message "Falha inesperada na execução: $($_.Exception.Message)"
+    exit $script:ExitCodes.ErroDeUso
 }
 
-# B. Remoção de Aplicativos Selecionados
-$AppsToRemoveObjects = $AllApps | Where-Object { $SelectedAppsIds -contains $_.Id }
-if ($AppsToRemoveObjects.Count -gt 0) {
-    Write-Host "`n$($script:C_Y) >> FASE 1: REMOÇÃO DE BLOATWARE E APLICATIVOS ($($AppsToRemoveObjects.Count) selecionados)$($script:C_RST)"
-    Executar-Etapa "Desinstalação de Pacotes Appx e WinGet" {
-        Remove-AppListWithProgress -AppsToRemove $AppsToRemoveObjects
-    }
-}
+Show-ExecutionSummary -Result $Result -LogPath $LogPath
+if ($Interactive) { Read-Host "`n Pressione ENTER para finalizar" | Out-Null }
 
-# Remoção de OneDrive
-Executar-Etapa "Remoção e Limpeza do Microsoft OneDrive" {
-    Remove-OneDriveDeep
-}
-
-# C. Privacidade, Telemetria e IA
-Write-Host "`n$($script:C_Y) >> FASE 2: PRIVACIDADE, TELEMETRIA E BLOQUEIO DE IA$($script:C_RST)"
-Executar-Etapa "Desativar Telemetria (DiagTrack & dmwappushservice)" {
-    Disable-SystemTelemetry
-}
-Executar-Etapa "Bloquear Windows AI (Recall, Click-to-Do, Copilot e WSAIFabricSvc)" {
-    Disable-WindowsAIAndRecall -IsWin11 $IsWin11
-}
-Executar-Etapa "Desativar Sugestões e Anúncios do Windows" {
-    Disable-WindowsSuggestionsAndAds
-}
-Executar-Etapa "Desativar Background e Telemetria do Edge" {
-    Disable-EdgeBackgroundAndTelemetry
-}
-
-# D. Jogos e Protocolos Xbox
-Write-Host "`n$($script:C_Y) >> FASE 3: OTIMIZAÇÕES DE JOGOS & TRATAMENTO DE PROTOCOLOS$($script:C_RST)"
-Executar-Etapa "Desativar Gravação em Segundo Plano (GameDVR)" {
-    Disable-GameDVRBackgroundCapture
-}
-
-# Se o usuário escolheu remover o XboxGamingOverlay, aplica o fix de protocolos anti-popups
-if ($SelectedAppsIds -contains "XboxGamingOverlay") {
-    Executar-Etapa "Neutralizar Protocolos ms-gamingoverlay (Anti-Popup Fix)" {
-        Apply-GameBarProtocolNullRoute
-    }
-}
-
-# E. Performance, Interface e Sistema
-Write-Host "`n$($script:C_Y) >> FASE 4: PERFORMANCE DE SISTEMA & EXPLORER$($script:C_RST)"
-Executar-Etapa "Otimizar Explorer (Extensões de Arquivo & Context Menu)" {
-    Set-ExplorerAndUITweaks -IsWin11 $IsWin11
-}
-Executar-Etapa "Aplicar Esquema Ultimate Performance e Efeitos Visuais" {
-    Set-PowerAndPerformanceTweaks
-}
-Executar-Etapa "Desativar Pesquisa Web Dinâmica no Menu Iniciar" {
-    Disable-SearchHighlightsAndWeb
-}
-
-# F. Agressividade Extrema (Se selecionada)
-if ($AgressividadeExtrema -or $SelectedPresetName -eq "Extremo") {
-    Write-Host "`n$($script:C_R) >> FASE EXTRA: OTIMIZAÇÕES EXTREMAS DE BAIXO NÍVEL$($script:C_RST)"
-    Executar-Etapa "Desativar SysMain (Superfetch) e Windows Search" {
-        Disable-LegacyHeavyServices
-    }
-    Executar-Etapa "Remoção Profunda do Microsoft Edge" {
-        Invoke-EdgeForceRemoveClean
-    }
-}
-
-# G. Limpeza e Reinicialização do Explorer
-Write-Host "`n$($script:C_Y) >> FASE FINAL: LIMPEZA DE DISCO E FINALIZAÇÃO$($script:C_RST)"
-Executar-Etapa "Limpar Arquivos Temporários (%TEMP%)" {
-    Clear-SystemTempFiles
-}
-Executar-Etapa "Reiniciando Interface Gráfica (Explorer)" {
-    Restart-WindowsExplorer
-}
-
-Stop-Transcript | Out-Null
-
-Write-Host "`n$($script:C_GN)[ SUCESSO ] Otimização concluída com alta integridade operacional!$($script:C_RST)"
-Write-Host "$($script:C_C)[ LOG     ] Relatório detalhado salvo em: $LogPath$($script:C_RST)"
-
-if (-not $Silent) {
-    Write-Host "`n$($script:C_Y) >> Pressione ENTER para finalizar...$($script:C_RST)"
-    Read-Host
-}
+if ($Result.Failed -gt 0) { exit $script:ExitCodes.FalhasParciais }
+exit $script:ExitCodes.Sucesso
