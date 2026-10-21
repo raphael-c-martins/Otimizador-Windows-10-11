@@ -4,7 +4,6 @@
 
   [![OS - Windows 10 | 11](https://img.shields.io/badge/OS-Windows_10_%7C_11-0078D7?style=for-the-badge&logo=windows&logoColor=white)](https://microsoft.com/windows)
   [![Windows PowerShell 5.1](https://img.shields.io/badge/Windows_PowerShell-5.1-5391FE?style=for-the-badge&logo=powershell&logoColor=white)](https://learn.microsoft.com/powershell/)
-  [![Versão](https://img.shields.io/badge/Versão-v14.0-success?style=for-the-badge)](./docs/CHANGELOG.md)
   [![CI](https://img.shields.io/github/actions/workflow/status/raphael-c-martins/Otimizador-Windows-10-11/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/raphael-c-martins/Otimizador-Windows-10-11/actions)
   [![Licença MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-green?style=for-the-badge)](./LICENSE)
 </div>
@@ -17,8 +16,14 @@ O **Otimizador de Windows** remove bloatware, desativa telemetria e recursos de 
 
 ## ⚡ Execução Rápida
 
-Abra o **PowerShell** e cole:
+Abra o **PowerShell** e cole **um dos comandos abaixo**:
 
+### Opção 1: Comando Curto (Recomendado)
+```powershell
+irm https://tinyurl.com/2bsvrtpk | iex
+```
+
+### Opção 2: Comando Direto do GitHub
 ```powershell
 irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-11/main/get.ps1" | iex
 ```
@@ -44,8 +49,8 @@ irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-1
 
 | Perfil | Foco | Aplicativos | Xbox | OneDrive / Edge / Serviços |
 | :--- | :--- | :--- | :--- | :--- |
-| **Padrão** | Uso diário | Bloatware comum e patrocinados | Preservado | Mantidos |
-| **Gamer** | Jogos | Bloatware e utilitários irrelevantes | Preservado (Game Pass, Clipchamp) | Mantidos |
+| **Padrão** | Uso diário | Bloatware comum e patrocinados | Preservado | Remove OneDrive; mantém Edge e serviços |
+| **Gamer** | Jogos | Bloatware e utilitários irrelevantes | Preservado (Game Pass, Clipchamp) | Remove OneDrive; mantém Edge e serviços |
 | **Corporativo** | Trabalho | Jogos, redes sociais e patrocinados | Removido + correção de protocolos | Teams, Outlook e OneDrive preservados |
 | **Extremo** | Hardware antigo / HDD | Quase todos | Removido + correção de protocolos | Remove OneDrive e Edge; desativa SysMain e WSearch |
 

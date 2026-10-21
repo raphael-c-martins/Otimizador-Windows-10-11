@@ -143,8 +143,8 @@
       "Category": "Apps",
       "Function": "Remove-OneDriveDeep",
       "Name": "Desinstalar o Microsoft OneDrive",
-      "Description": "Remove o cliente de sincronização do OneDrive. Os arquivos locais são mantidos, mas deixam de sincronizar com a nuvem. Não use em computadores corporativos.",
-      "SelectedByDefault": false
+      "Description": "Remove o cliente de sincronização do OneDrive. Os arquivos locais são mantidos, mas deixam de sincronizar com a nuvem. O perfil Corporativo não o remove.",
+      "SelectedByDefault": true
     },
     {
       "Id": "ForceUninstallEdge",

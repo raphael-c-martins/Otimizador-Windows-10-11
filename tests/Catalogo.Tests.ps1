@@ -61,10 +61,10 @@ Describe 'Perfis (Config/Presets)' {
         }
     }
 
-    It 'somente o perfil Extremo desinstala o OneDrive' {
+    It 'o perfil Corporativo preserva o OneDrive e os demais o removem' {
         foreach ($Name in (Get-OptimizerPresetNames -ScriptDir $RepoRoot)) {
             $Preset = Import-OptimizerPreset -Catalog $Catalog -NameOrPath $Name
-            (@($Preset.ApplyTweaks) -contains 'RemoveOneDrive') | Should Be ($Name -eq 'Extremo')
+            (@($Preset.ApplyTweaks) -contains 'RemoveOneDrive') | Should Be ($Name -ne 'Corporativo')
         }
     }
 }

@@ -15,7 +15,8 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 - **Testes e CI:** suíte Pester em `/tests` e GitHub Actions com verificação de sintaxe, PSScriptAnalyzer e testes. Workflow de release com SHA256.
 
 ### 🔧 Corrigido
-- O OneDrive não é mais removido em todas as execuções (agora é opcional; só o perfil Extremo o inclui).
+- O OneDrive virou um ajuste que pode ser desmarcado; o perfil Corporativo não o remove mais (Padrão, Gamer e Extremo continuam removendo).
+- A versão do programa saiu do título da janela e do cabeçalho do terminal (continua registrada no log).
 - O ponto de restauração é confirmado; falhas não aparecem mais como sucesso.
 - Etapas com falha são reportadas como `ERRO` no log, no resumo e no código de saída.
 - `Run.ps1` verifica privilégio de Administrador.

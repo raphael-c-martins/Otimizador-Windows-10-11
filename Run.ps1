@@ -173,7 +173,7 @@ try {
         $PresetMenu = [ordered]@{ '1' = 'Padrao'; '2' = 'Gamer'; '3' = 'Corporativo'; '4' = 'Extremo' }
         $SelectedName = $null
         while (-not $SelectedName) {
-            Show-MainHeader -SubTitle "PROTOCOLO DE OTIMIZAÇÃO & DEBLOAT (v$script:OptimizerVersion)$(if ($DryRun) { ' [SIMULAÇÃO]' })"
+            Show-MainHeader -SubTitle "PROTOCOLO DE OTIMIZAÇÃO & DEBLOAT$(if ($DryRun) { ' [SIMULAÇÃO]' })"
             Write-Host "$($script:C_GN)>> PASSO 1: SELECIONE O PERFIL DE OTIMIZAÇÃO$($script:C_RST)`n"
             Write-Host "$($script:C_W) [1] PADRÃO (Recomendado / Equilibrado)$($script:C_RST)"
             Write-Host "     - Limpeza de bloatware, desativação de telemetria e ajustes de interface e energia.`n"
@@ -182,7 +182,7 @@ try {
             Write-Host "$($script:C_P) [3] CORPORATIVO (Escritório & Produtividade)$($script:C_RST)"
             Write-Host "     - Preserva Teams, Outlook e OneDrive, remove jogos e desativa telemetria/IA.`n"
             Write-Host "$($script:C_R) [4] EXTREMO (Desempenho Máximo p/ Hardware Antigo)$($script:C_RST)"
-            Write-Host "     - Desativa SysMain/WSearch, remove OneDrive e Microsoft Edge.`n"
+            Write-Host "     - Desativa SysMain/WSearch e remove o Microsoft Edge.`n"
             Write-Host "$($script:C_Y) [5] RESTAURAR / DESFAZER OTIMIZAÇÕES (Undo)$($script:C_RST)"
             Write-Host "     - Devolve registro, serviços, tarefas e energia ao estado anterior às otimizações.`n"
 

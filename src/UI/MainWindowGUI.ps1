@@ -69,10 +69,7 @@ $script:MainWindowXaml = @"
                 <StackPanel Grid.Column="0">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⚡ OTIMIZADOR DE WINDOWS" FontSize="19" FontWeight="Bold" Foreground="#00B4D8"/>
-                        <Border Background="#0077B6" CornerRadius="4" Margin="12,0,0,0" Padding="8,2" VerticalAlignment="Center">
-                            <TextBlock Name="VersionBadgeText" Text="v0" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
-                        </Border>
-                        <Border Name="DryRunBadge" Background="#B7791F" CornerRadius="4" Margin="8,0,0,0" Padding="8,2" VerticalAlignment="Center" Visibility="Collapsed">
+                        <Border Name="DryRunBadge" Background="#B7791F" CornerRadius="4" Margin="12,0,0,0" Padding="8,2" VerticalAlignment="Center" Visibility="Collapsed">
                             <TextBlock Text="SIMULAÇÃO: NADA SERÁ ALTERADO" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
                         </Border>
                     </StackPanel>
@@ -161,7 +158,7 @@ $script:MainWindowXaml = @"
                                 <Border Grid.Row="1" Grid.Column="1" Background="#1C1C1C" BorderBrush="#E74C3C" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
                                         <TextBlock Text="🔥 EXTREMO (Hardware Antigo)" FontSize="15" FontWeight="Bold" Foreground="#E74C3C"/>
-                                        <TextBlock Text="Otimização agressiva para computadores lentos. Desativa SysMain/WSearch e remove OneDrive e Microsoft Edge."
+                                        <TextBlock Text="Otimização agressiva para computadores lentos. Desativa SysMain/WSearch e remove o Microsoft Edge."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetExtremo" Content="Carregar Perfil Extremo" Background="#C0392B" BorderBrush="#E74C3C"/>
                                     </StackPanel>
@@ -281,7 +278,7 @@ $script:MainWindowXaml = @"
 "@
 
 $script:MainWindowControlNames = @(
-    'VersionBadgeText', 'DryRunBadge', 'HostInfoText', 'UserInfoText',
+    'DryRunBadge', 'HostInfoText', 'UserInfoText',
     'NavBtnPresets', 'NavBtnApps', 'NavBtnPrivacy', 'NavBtnPerformance', 'NavBtnLogs', 'NavBtnUndo',
     'PanelPresets', 'PanelApps', 'PanelPrivacy', 'PanelPerformance', 'PanelLogs', 'PanelUndo',
     'AppsContainerList', 'PrivacyTweaksContainer', 'SystemTweaksContainer', 'AppSearchBox',
@@ -336,8 +333,8 @@ function Show-MainOptimizerWindow {
     # Estado compartilhado pelos eventos (alterado por propriedade, pois cada evento tem seu próprio escopo)
     $State = @{ Task = $null; Busy = $false; OnComplete = $null; PendingOptimize = $null; Timer = $null }
 
-    $Window.Title = "Otimizador de Windows v$script:OptimizerVersion$(if ($IsDryRun) { ' [SIMULAÇÃO]' })"
-    $C.VersionBadgeText.Text = "v$script:OptimizerVersion"
+    # A versão fica só no log (controle interno); a janela mostra apenas o nome do produto
+    $Window.Title = "Otimizador de Windows$(if ($IsDryRun) { ' [SIMULAÇÃO]' })"
     if ($IsDryRun) { $C.DryRunBadge.Visibility = [System.Windows.Visibility]::Visible }
     $C.HostInfoText.Text = "Sistema: $OSCaption"
     $C.UserInfoText.Text = "Usuário: $env:USERNAME | PC: $env:COMPUTERNAME | $(if ($Context.IsPortable) { 'Notebook' } else { 'Desktop' })"

@@ -18,7 +18,7 @@ $script:C_RST = "$Esc[0m"
 
 function Show-MainHeader {
     param(
-        [string]$SubTitle = "PROTOCOLO DE OTIMIZAÇÃO & DEBLOAT (v$script:OptimizerVersion)"
+        [string]$SubTitle = 'PROTOCOLO DE OTIMIZAÇÃO & DEBLOAT'
     )
     Clear-Host
     Write-Host ""

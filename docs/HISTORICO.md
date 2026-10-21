@@ -28,7 +28,8 @@
   6. **Respeito ao equipamento e ao usuário:**
      - Em notebooks, a hibernação é mantida e o plano Ultimate Performance não é ativado. O plano é reaproveitado entre execuções (antes uma cópia nova era criada a cada vez).
      - Se o programa for elevado com outra conta de administrador, os ajustes de usuário vão para o perfil do usuário conectado (`HKEY_USERS\<SID>`).
-     - O OneDrive virou um ajuste opcional, presente só no perfil Extremo.
+     - O OneDrive virou um ajuste próprio (pode ser desmarcado): os perfis Padrão, Gamer e Extremo o removem; o Corporativo o preserva.
+     - A versão do programa não aparece mais na janela nem no terminal (é controle interno). Ela continua registrada no log de cada execução e no CHANGELOG.
      - Corrigido o catálogo do Teams: `MSTeams` é o Teams de trabalho e `MicrosoftTeams` o pessoal. Nomes sem `*` passam a exigir correspondência exata.
   7. **Qualidade contínua:**
      - Modo `-DryRun` (simulação sem alterações e sem precisar de Administrador), testes Pester em `/tests` e CI no GitHub Actions (sintaxe, PSScriptAnalyzer e testes). A pasta `Documentação/` foi renomeada para `docs/` (acentos em nomes de pasta atrapalham links e pacotes zip).
