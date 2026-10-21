@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar sintaxe dos scripts
+        shell: powershell
+        run: |
+          $Falhas = 0
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $Tokens = $null; $Erros = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$Tokens, [ref]$Erros) | Out-Null
+            foreach ($E in $Erros) { Write-Host "::error file=$($_.FullName),line=$($E.Extent.StartLineNumber)::$($E.Message)"; $Falhas++ }
+          }
+          if ($Falhas -gt 0) { exit 1 }
+
+      - name: Verificar que get.ps1 e Otimizador.cmd são ASCII puro
+        shell: powershell
+        run: |
+          foreach ($Arquivo in 'get.ps1', 'Otimizador.cmd') {
+            $Bytes = [IO.File]::ReadAllBytes($Arquivo)
+            if (@($Bytes | Where-Object { $_ -gt 127 }).Count -gt 0) { Write-Host "::error file=$Arquivo::Contém caracteres não-ASCII"; exit 1 }
+          }
+
+      - name: Análise estática (PSScriptAnalyzer)
+        shell: powershell
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -SkipPublisherCheck
+          $Resultados = Invoke-ScriptAnalyzer -Path . -Recurse -Settings .\PSScriptAnalyzerSettings.psd1
+          $Resultados | Format-Table -AutoSize RuleName, Severity, ScriptName, Line, Message | Out-String -Width 250
+          if (@($Resultados | Where-Object Severity -eq 'Error').Count -gt 0) { exit 1 }
+
+      - name: Testes automatizados (Pester 3.4 nativo do Windows)
+        shell: powershell
+        run: .\tests\Invoke-Testes.ps1

@@ -1,0 +1,35 @@
+name: Release
+
+# Publica uma versão ao enviar uma tag "v*" (ex.: git tag v14.0.0 && git push origin v14.0.0).
+# O get.ps1 baixa o pacote desta release e confere o SHA256 antes de executar.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Testes automatizados
+        shell: powershell
+        run: .\tests\Invoke-Testes.ps1
+
+      - name: Gerar pacote e hash SHA256
+        shell: powershell
+        run: |
+          git archive --format=zip --prefix=Otimizador-Windows/ -o Otimizador-Windows.zip HEAD
+          $Hash = (Get-FileHash -LiteralPath Otimizador-Windows.zip -Algorithm SHA256).Hash
+          Set-Content -LiteralPath Otimizador-Windows.zip.sha256 -Value "$Hash  Otimizador-Windows.zip" -Encoding ASCII
+          Get-Content Otimizador-Windows.zip.sha256
+
+      - name: Criar release no GitHub
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$env:GITHUB_REF_NAME" Otimizador-Windows.zip Otimizador-Windows.zip.sha256 --title "$env:GITHUB_REF_NAME" --generate-notes

@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Arquivos .cmd precisam de CRLF (o cmd.exe interpreta rótulos e "goto" de forma errada com LF)
+*.cmd text eol=crlf

@@ -21,3 +21,6 @@ Antigos/
 TEMPORARIO/
 *.tmp
 *.temp
+
+# Ferramentas locais (ex.: módulos baixados para testes)
+.tools/
