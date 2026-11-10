@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Otimizador</RootNamespace>
+    <AssemblyName>Otimizador-Windows</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <LangVersion>5</LangVersion>
+    <CodePage>65001</CodePage>
+    <ApplicationIcon>Assets\Otimizador.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <OutputPath>..\.build\$(Configuration)\</OutputPath>
+    <IntermediateOutputPath>..\.build\obj\$(Configuration)\</IntermediateOutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Runtime.WindowsRuntime">
+      <HintPath>$(SystemRoot)\Microsoft.NET\Framework64\v4.0.30319\System.Runtime.WindowsRuntime.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime">
+      <HintPath>$(SystemRoot)\Microsoft.NET\Framework64\v4.0.30319\System.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Windows.Foundation">
+      <HintPath>$(SystemRoot)\System32\WinMetadata\Windows.Foundation.winmd</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Windows.Management">
+      <HintPath>$(SystemRoot)\System32\WinMetadata\Windows.Management.winmd</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Windows.ApplicationModel">
+      <HintPath>$(SystemRoot)\System32\WinMetadata\Windows.ApplicationModel.winmd</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Core\Constants.cs" />
+    <Compile Include="Core\Models.cs" />
+    <Compile Include="Core\Logger.cs" />
+    <Compile Include="Core\SystemInfo.cs" />
+    <Compile Include="Core\ChangeJournal.cs" />
+    <Compile Include="Core\AppManager.cs" />
+    <Compile Include="Core\PrivacyManager.cs" />
+    <Compile Include="Core\SecurityManager.cs" />
+    <Compile Include="Core\PerformanceManager.cs" />
+    <Compile Include="Core\GamingManager.cs" />
+    <Compile Include="Core\BackupManager.cs" />
+    <Compile Include="Core\UndoManager.cs" />
+    <Compile Include="Core\OptimizationEngine.cs" />
+    <Compile Include="UI\ConsoleTUI.cs" />
+    <Compile Include="UI\AppSelectionModal.cs" />
+    <Compile Include="UI\MainWindowGUI.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Config\Apps.json">
+      <LogicalName>Otimizador.Config.Apps.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Config\Tweaks.json">
+      <LogicalName>Otimizador.Config.Tweaks.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Config\Presets\Padrao.json">
+      <LogicalName>Otimizador.Config.Presets.Padrao.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Config\Presets\Gamer.json">
+      <LogicalName>Otimizador.Config.Presets.Gamer.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Config\Presets\Corporativo.json">
+      <LogicalName>Otimizador.Config.Presets.Corporativo.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Config\Presets\Extremo.json">
+      <LogicalName>Otimizador.Config.Presets.Extremo.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UI\MainWindow.xaml">
+      <LogicalName>Otimizador.UI.MainWindow.xaml</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\Otimizador.ico">
+      <LogicalName>Otimizador.Assets.Otimizador.ico</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+  <Target Name="CopyExecutableToRoot" AfterTargets="Build" Condition=" '$(Configuration)' == 'Release' ">
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(MSBuildProjectDirectory)\..\$(TargetFileName)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

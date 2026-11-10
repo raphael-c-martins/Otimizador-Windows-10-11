@@ -1,0 +1,175 @@
+﻿{
+  "Version": "2.0",
+  "Categories": [
+    { "Id": "Privacy", "Name": "Privacidade & Telemetria" },
+    { "Id": "AI", "Name": "Inteligência Artificial (Recall & Copilot)" },
+    { "Id": "Security", "Name": "Segurança & Rede (Cibersegurança)" },
+    { "Id": "Gaming", "Name": "Jogos & Xbox Protocol Fix" },
+    { "Id": "Performance", "Name": "Performance de Sistema & Energia" },
+    { "Id": "UI", "Name": "Interface do Usuário & Explorer" },
+    { "Id": "Apps", "Name": "Aplicativos do Sistema" },
+    { "Id": "Maintenance", "Name": "Limpeza & Manutenção" }
+  ],
+  "Tweaks": [
+    {
+      "Id": "DisableTelemetry",
+      "Category": "Privacy",
+      "Function": "Disable-SystemTelemetry",
+      "Name": "Desativar Telemetria e Diagnósticos (DiagTrack)",
+      "Description": "Desativa os serviços DiagTrack e dmwappushservice, as tarefas agendadas de telemetria, o ID de anúncios e os pedidos de feedback.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableActivityHistory",
+      "Category": "Privacy",
+      "Function": "Disable-ActivityHistory",
+      "Name": "Desativar Histórico de Atividades",
+      "Description": "Impede o registro e o envio do histórico de uso de aplicativos e documentos.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableWindowsSuggestions",
+      "Category": "Privacy",
+      "Function": "Disable-WindowsSuggestionsAndAds",
+      "Name": "Desativar Sugestões e Anúncios do Windows",
+      "Description": "Remove anúncios na tela de bloqueio, menu Iniciar e aplicativo de Configurações, além da instalação silenciosa de apps sugeridos.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableStartMenuWebSearch",
+      "Category": "Privacy",
+      "Function": "Disable-StartMenuWebSearch",
+      "Name": "Desativar Pesquisa Web no Menu Iniciar",
+      "Description": "A busca do menu Iniciar passa a mostrar apenas resultados locais, sem sugestões do Bing.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableEdgeBackgroundAndAds",
+      "Category": "Privacy",
+      "Function": "Disable-EdgeBackgroundAndTelemetry",
+      "Name": "Desativar Execução em Segundo Plano e Anúncios do Edge",
+      "Description": "Impede o Edge de inicializar com o Windows e consumir memória em segundo plano, e desliga sua telemetria.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableRecallAndAI",
+      "Category": "AI",
+      "Function": "Disable-WindowsRecallAndAI",
+      "Name": "Bloquear Windows Recall, Click-to-Do e IA Local",
+      "Description": "Desativa a captura contínua de tela (Recall), o Click-to-Do e o serviço WSAIFabricSvc do Windows 11 24H2+.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableCopilot",
+      "Category": "AI",
+      "Function": "Disable-WindowsCopilot",
+      "Name": "Desativar Microsoft Copilot no Sistema e Barra de Tarefas",
+      "Description": "Remove o botão da barra de tarefas e ativa as diretivas que desligam o Copilot.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableAdminShares",
+      "Category": "Security",
+      "Function": "Disable-AdminShares",
+      "Name": "Desativar Compartilhamentos Administrativos Ocultos (C$, D$, ADMIN$)",
+      "Description": "Desativa a criação automática de C$, D$ e ADMIN$ sem remover pastas compartilhadas manualmente. Atenção: reinicia o serviço LanmanServer (interrompe conexões SMB temporariamente) e pode afetar ferramentas de administração remota, backup ou gerenciamento.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableGameDVR",
+      "Category": "Gaming",
+      "Function": "Disable-GameDVRBackgroundCapture",
+      "Name": "Desativar Gravação em Segundo Plano (GameDVR)",
+      "Description": "Libera recursos de CPU/GPU eliminando a gravação de tela em segundo plano enquanto joga.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "FixGameBarProtocols",
+      "Category": "Gaming",
+      "Function": "Set-GameBarProtocolNullRoute",
+      "Name": "Neutralizar Protocolos ms-gamingoverlay / ms-gamebar",
+      "Description": "Redireciona chamadas de protocolo para systray.exe, evitando popups de erro ao abrir jogos sem o Xbox Game Bar.",
+      "SelectedByDefault": false
+    },
+    {
+      "Id": "RestoreClassicContextMenu",
+      "Category": "UI",
+      "Function": "Enable-ClassicContextMenu",
+      "Name": "Restaurar Menu de Contexto Clássico (Windows 11)",
+      "Description": "Traz de volta o menu de clique direito completo sem precisar clicar em 'Mostrar mais opções'.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "ShowFileExtensions",
+      "Category": "UI",
+      "Function": "Show-FileExtensions",
+      "Name": "Exibir Extensões de Arquivos Conhecidos",
+      "Description": "Melhora a segurança e usabilidade exibindo extensões como .exe, .bat, .pdf no Explorer.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "HideTaskbarExtraButtons",
+      "Category": "UI",
+      "Function": "Hide-TaskbarExtraButtons",
+      "Name": "Ocultar Botões Visão de Tarefas e Chat da Barra de Tarefas",
+      "Description": "Remove os botões Visão de Tarefas e Chat (Windows 11) ou Pessoas (Windows 10) da barra de tarefas.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "OptimizeVisualEffects",
+      "Category": "UI",
+      "Function": "Set-OptimizedVisualEffects",
+      "Name": "Otimizar Efeitos Visuais (Sem quebrar fontes)",
+      "Description": "Desativa transparência e animações mantendo a renderização de fontes suave (ClearType).",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableFastStartup",
+      "Category": "Performance",
+      "Function": "Disable-FastStartup",
+      "Name": "Desativar Inicialização Rápida (Fast Startup)",
+      "Description": "Garante desligamento completo e evita drivers presos entre sessões. Em desktops também desliga a hibernação e libera o hiberfil.sys; em notebooks a hibernação é mantida.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "InjectUltimatePerformancePlan",
+      "Category": "Performance",
+      "Function": "Enable-UltimatePerformancePlan",
+      "Name": "Ativar Plano de Energia Ultimate Performance",
+      "Description": "Ativa o esquema de energia de máximo desempenho (reaproveitado entre execuções). Ignorado em notebooks para preservar a bateria.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableSysMainAndWSearch",
+      "Category": "Performance",
+      "Function": "Disable-LegacyHeavyServices",
+      "Name": "Desativar SysMain (Superfetch) e Windows Search (Modo Extremo)",
+      "Description": "Reduz o uso de disco em HDDs mecânicos e processadores antigos. A pesquisa de arquivos fica mais lenta.",
+      "SelectedByDefault": false
+    },
+    {
+      "Id": "RemoveOneDrive",
+      "Category": "Apps",
+      "Function": "Remove-OneDriveDeep",
+      "Name": "Desinstalar o Microsoft OneDrive",
+      "Description": "Remove o cliente de sincronização do OneDrive. Os arquivos locais são mantidos, mas deixam de sincronizar com a nuvem. O perfil Corporativo não o remove.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "ForceUninstallEdge",
+      "Category": "Apps",
+      "Function": "Remove-MicrosoftEdge",
+      "Name": "Remover Profundamente o Microsoft Edge (Modo Extremo)",
+      "Description": "Desinstalação forçada do navegador Edge com limpeza de atalhos. Não é revertida pelo Undo.",
+      "SelectedByDefault": false
+    },
+    {
+      "Id": "ClearTempFiles",
+      "Category": "Maintenance",
+      "Function": "Clear-SystemTempFiles",
+      "Name": "Limpar Arquivos Temporários",
+      "Description": "Apaga o conteúdo de %TEMP% e da pasta Temp do Windows, preservando arquivos em uso, a pasta do programa e os logs.",
+      "SelectedByDefault": true
+    }
+  ]
+}

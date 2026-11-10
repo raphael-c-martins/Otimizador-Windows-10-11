@@ -2,45 +2,100 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  testes:
+  segredos:
+    name: Busca de segredos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # No push olha apenas os commits enviados; rodando manualmente, varre o historico inteiro.
+      - name: Busca de segredos
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-e-testes:
+    name: Build e Testes (.NET 4.8 / PowerShell)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Verificar sintaxe dos scripts
+      - name: Compilar Otimizador-Windows.exe e suíte de testes
         shell: powershell
         run: |
-          $Falhas = 0
-          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
-            $Tokens = $null; $Erros = $null
-            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$Tokens, [ref]$Erros) | Out-Null
-            foreach ($E in $Erros) { Write-Host "::error file=$($_.FullName),line=$($E.Extent.StartLineNumber)::$($E.Message)"; $Falhas++ }
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $msbuild = $null
+          if (Test-Path -LiteralPath $vswhere) {
+            $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
           }
-          if ($Falhas -gt 0) { exit 1 }
+          if (-not $msbuild -or -not (Test-Path -LiteralPath $msbuild)) {
+            $msbuild = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe'
+          }
+          Write-Host "MSBuild: $msbuild"
 
-      - name: Verificar que get.ps1 e Otimizador.cmd são ASCII puro
+          & $msbuild src\Otimizador.csproj /nologo /p:Configuration=Release /t:Rebuild
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $msbuild src\tests\Otimizador.Tests.csproj /nologo /p:Configuration=Release /t:Rebuild
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Executar testes automatizados (C#)
         shell: powershell
         run: |
-          foreach ($Arquivo in 'get.ps1', 'Otimizador.cmd') {
-            $Bytes = [IO.File]::ReadAllBytes($Arquivo)
-            if (@($Bytes | Where-Object { $_ -gt 127 }).Count -gt 0) { Write-Host "::error file=$Arquivo::Contém caracteres não-ASCII"; exit 1 }
+          $ErrorActionPreference = 'Stop'
+          .\.build\Tests\Otimizador.Tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Teste de fumaça CLI (-Help e -DryRun no executável da raiz)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path -LiteralPath .\Otimizador-Windows.exe)) {
+            throw 'Otimizador-Windows.exe nao encontrado na raiz do repositorio.'
+          }
+          $pHelp = Start-Process -FilePath .\Otimizador-Windows.exe -ArgumentList '-Help' -NoNewWindow -Wait -PassThru
+          if ($pHelp.ExitCode -ne 0) { throw "Falha em -Help: código $($pHelp.ExitCode)" }
+
+          $pDry = Start-Process -FilePath .\Otimizador-Windows.exe -ArgumentList '-Preset','Corporativo','-DryRun','-Silent' -NoNewWindow -Wait -PassThru
+          if ($pDry.ExitCode -ne 0) { throw "Falha em -DryRun: código $($pDry.ExitCode)" }
+
+      - name: Validar arquivos JSON em src/Config/
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-ChildItem -Path src\Config -Recurse -Filter *.json | ForEach-Object {
+            $null = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
           }
 
-      - name: Análise estática (PSScriptAnalyzer)
+      - name: Validar get.ps1 (ASCII puro, sintaxe e PSScriptAnalyzer)
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Stop'
+          $bytes = [IO.File]::ReadAllBytes('get.ps1')
+          if (@($bytes | Where-Object { $_ -gt 127 }).Count -gt 0) {
+            Write-Host '::error file=get.ps1::Contem caracteres nao-ASCII'
+            exit 1
+          }
+          $tokens = $null; $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'get.ps1').Path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            foreach ($e in $errors) { Write-Host "::error file=get.ps1,line=$($e.Extent.StartLineNumber)::$($e.Message)" }
+            exit 1
+          }
           Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -SkipPublisherCheck
-          $Resultados = Invoke-ScriptAnalyzer -Path . -Recurse -Settings .\PSScriptAnalyzerSettings.psd1
-          $Resultados | Format-Table -AutoSize RuleName, Severity, ScriptName, Line, Message | Out-String -Width 250
-          if (@($Resultados | Where-Object Severity -eq 'Error').Count -gt 0) { exit 1 }
-
-      - name: Testes automatizados (Pester 3.4 nativo do Windows)
-        shell: powershell
-        run: .\tests\Invoke-Testes.ps1
+          $resultados = Invoke-ScriptAnalyzer -Path .\get.ps1 -Settings .\.github\PSScriptAnalyzerSettings.psd1
+          $resultados | Format-Table -AutoSize RuleName, Severity, Line, Message | Out-String -Width 250
+          if (@($resultados | Where-Object Severity -eq 'Error').Count -gt 0) { exit 1 }

@@ -1,7 +1,7 @@
 name: Release
 
-# Publica uma versão ao enviar uma tag "v*" (ex.: git tag v14.0.0 && git push origin v14.0.0).
-# O get.ps1 baixa o pacote desta release e confere o SHA256 antes de executar.
+# Publica uma versão compilada ao enviar uma tag "v*" (ex.: git tag v15.0.0 && git push origin v15.0.0).
+# O executável (.exe) e o pacote (.zip) são gerados no runner limpo do GitHub com hashes SHA256.
 
 on:
   push:
@@ -12,24 +12,65 @@ permissions:
 
 jobs:
   publicar:
+    name: Compilar e Publicar Release
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Testes automatizados
-        shell: powershell
-        run: .\tests\Invoke-Testes.ps1
-
-      - name: Gerar pacote e hash SHA256
+      - name: Compilar e executar testes automatizados
         shell: powershell
         run: |
-          git archive --format=zip --prefix=Otimizador-Windows/ -o Otimizador-Windows.zip HEAD
-          $Hash = (Get-FileHash -LiteralPath Otimizador-Windows.zip -Algorithm SHA256).Hash
-          Set-Content -LiteralPath Otimizador-Windows.zip.sha256 -Value "$Hash  Otimizador-Windows.zip" -Encoding ASCII
-          Get-Content Otimizador-Windows.zip.sha256
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $msbuild = $null
+          if (Test-Path -LiteralPath $vswhere) {
+            $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
+          }
+          if (-not $msbuild -or -not (Test-Path -LiteralPath $msbuild)) {
+            $msbuild = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe'
+          }
+
+          & $msbuild src\Otimizador.csproj /nologo /p:Configuration=Release /t:Rebuild
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $msbuild src\tests\Otimizador.Tests.csproj /nologo /p:Configuration=Release /t:Rebuild
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          .\.build\Tests\Otimizador.Tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Gerar artefatos (.exe, .zip e SHA256)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = Join-Path $env:RUNNER_TEMP 'release-stage'
+          if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+          New-Item -ItemType Directory -Path $stage -Force | Out-Null
+
+          if (-not (Test-Path -LiteralPath .\Otimizador-Windows.exe)) {
+            Copy-Item -LiteralPath .\.build\Release\Otimizador-Windows.exe -Destination .\Otimizador-Windows.exe -Force
+          }
+          Copy-Item -LiteralPath .\Otimizador-Windows.exe -Destination (Join-Path $stage 'Otimizador-Windows.exe') -Force
+          Copy-Item -LiteralPath .\README.md -Destination (Join-Path $stage 'README.md') -Force
+          if (Test-Path -LiteralPath .\LICENSE) {
+            Copy-Item -LiteralPath .\LICENSE -Destination (Join-Path $stage 'LICENSE') -Force
+          }
+
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath .\Otimizador-Windows.zip -Force
+
+          foreach ($asset in 'Otimizador-Windows.exe', 'Otimizador-Windows.zip') {
+            $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash
+            Set-Content -LiteralPath "$asset.sha256" -Value "$hash  $asset" -Encoding ASCII
+            Get-Content "$asset.sha256"
+          }
 
       - name: Criar release no GitHub
         shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$env:GITHUB_REF_NAME" Otimizador-Windows.zip Otimizador-Windows.zip.sha256 --title "$env:GITHUB_REF_NAME" --generate-notes
+        run: |
+          $ErrorActionPreference = 'Stop'
+          gh release create "$env:GITHUB_REF_NAME" `
+            Otimizador-Windows.exe Otimizador-Windows.exe.sha256 `
+            Otimizador-Windows.zip Otimizador-Windows.zip.sha256 `
+            --title "$env:GITHUB_REF_NAME" --generate-notes

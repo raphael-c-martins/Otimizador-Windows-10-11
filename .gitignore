@@ -11,16 +11,32 @@
 .env.*
 *.key
 *.pem
+*.pfx
+*.db
+*.sqlite
+*.sqlite3
+
+# Worktrees locais do agente
+/.claude/
+
+# Ignore build artifacts and compiled binaries (mantem apenas o executavel principal na raiz)
+/.build/
+/bin/
+/obj/
+/dist/
+*.exe
+!/Otimizador-Windows.exe
+*.pdb
 
 # Ignore generated logs
-logs/
+/logs/
 *.log
 
 # Ignore temporary and transition files
-Antigos/
-TEMPORARIO/
+/Antigos/
+/TEMPORARIO/
 *.tmp
 *.temp
 
-# Ferramentas locais (ex.: módulos baixados para testes)
-.tools/
+# Ferramentas locais (ex.: modulos baixados para testes)
+/.tools/

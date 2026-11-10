@@ -3,7 +3,7 @@
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $Repo = 'raphael-c-martins/Otimizador-Windows-10-11'
-$AssetName = 'Otimizador-Windows.zip'
+$AssetName = 'Otimizador-Windows.exe'
 
 # 1. Auto-elevacao de Administrador ("return" em vez de "exit" para nao fechar o terminal do usuario)
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -14,7 +14,7 @@ if (-not $IsAdmin) {
     return
 }
 
-# 2. Pasta protegida: somente Administradores e SYSTEM escrevem (evita adulteracao antes da execucao)
+# 2. Pasta protegida: somente Administradores e SYSTEM escrevem (logs e estado sao preservados)
 $DataRoot = Join-Path $env:ProgramData 'OtimizadorWindows'
 $AppDir = Join-Path $DataRoot 'app'
 $DownloadDir = Join-Path $DataRoot 'download'
@@ -32,46 +32,43 @@ try {
         if (Test-Path -LiteralPath $Dir) { Remove-Item -LiteralPath $Dir -Recurse -Force -ErrorAction Stop }
         New-Item -ItemType Directory -Path $Dir -Force | Out-Null
     }
-    $ZipPath = Join-Path $DownloadDir $AssetName
 
-    # 3. Download da ultima versao publicada, com verificacao SHA256
+    $TempExePath = Join-Path $DownloadDir $AssetName
+    $HashPath = Join-Path $DownloadDir "$AssetName.sha256"
+    $FinalExePath = Join-Path $AppDir $AssetName
+
+    # 3. Download do executavel compilado mais recente com verificacao obrigatoria SHA256
     $Headers = @{ 'User-Agent' = 'Otimizador-Windows-Bootstrap' }
-    $Release = $null
-    try { $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $Headers -ErrorAction Stop } catch {}
+    $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $Headers -ErrorAction Stop
 
-    $ZipAsset = $null
-    $HashAsset = $null
-    if ($null -ne $Release) {
-        $ZipAsset = $Release.assets | Where-Object { $_.name -eq $AssetName } | Select-Object -First 1
-        $HashAsset = $Release.assets | Where-Object { $_.name -eq "$AssetName.sha256" } | Select-Object -First 1
+    $ExeAsset = $Release.assets | Where-Object { $_.name -eq $AssetName } | Select-Object -First 1
+    $HashAsset = $Release.assets | Where-Object { $_.name -eq "$AssetName.sha256" } | Select-Object -First 1
+
+    if ($null -eq $ExeAsset -or $null -eq $HashAsset) {
+        throw "O release '$($Release.tag_name)' nao contem $AssetName e $AssetName.sha256. Baixe manualmente pela aba Releases no GitHub."
     }
 
-    if ($null -ne $ZipAsset -and $null -ne $HashAsset) {
-        Write-Host "`n [..] Baixando o Otimizador de Windows $($Release.tag_name)..." -ForegroundColor Cyan
-        $HashPath = Join-Path $DownloadDir "$AssetName.sha256"
-        Invoke-WebRequest -Uri $ZipAsset.browser_download_url -OutFile $ZipPath -UseBasicParsing -Headers $Headers -ErrorAction Stop
-        Invoke-WebRequest -Uri $HashAsset.browser_download_url -OutFile $HashPath -UseBasicParsing -Headers $Headers -ErrorAction Stop
+    Write-Host "`n [..] Baixando o Otimizador de Windows $($Release.tag_name)..." -ForegroundColor Cyan
+    Invoke-WebRequest -Uri $ExeAsset.browser_download_url -OutFile $TempExePath -UseBasicParsing -Headers $Headers -ErrorAction Stop
+    Invoke-WebRequest -Uri $HashAsset.browser_download_url -OutFile $HashPath -UseBasicParsing -Headers $Headers -ErrorAction Stop
 
-        $Expected = ((Get-Content -LiteralPath $HashPath -Raw).Trim() -split '\s+')[0]
-        $Actual = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash
-        if ($Expected -ne $Actual) {
-            throw "Falha na verificacao de integridade (SHA256 esperado $Expected, obtido $Actual). O pacote foi descartado."
-        }
-        Write-Host ' [ OK ] Integridade do pacote verificada (SHA256).' -ForegroundColor Green
-    } else {
-        Write-Host ' [AVISO] Nenhuma versao publicada encontrada: usando o branch main SEM verificacao de integridade.' -ForegroundColor Yellow
-        Invoke-WebRequest -Uri "https://github.com/$Repo/archive/refs/heads/main.zip" -OutFile $ZipPath -UseBasicParsing -Headers $Headers -ErrorAction Stop
+    $Expected = ((Get-Content -LiteralPath $HashPath -Raw).Trim() -split '\s+')[0]
+    if ($Expected -notmatch '^[a-fA-F0-9]{64}$') {
+        throw "Arquivo SHA256 invalido para '$AssetName'."
     }
 
-    Expand-Archive -LiteralPath $ZipPath -DestinationPath $AppDir -Force
+    $Actual = (Get-FileHash -LiteralPath $TempExePath -Algorithm SHA256).Hash
+    if ($Expected -ne $Actual) {
+        throw "Falha na verificacao de integridade (SHA256 esperado $Expected, obtido $Actual). O executavel foi descartado."
+    }
+    Write-Host ' [ OK ] Integridade do executavel verificada (SHA256).' -ForegroundColor Green
+
+    Move-Item -LiteralPath $TempExePath -Destination $FinalExePath -Force -ErrorAction Stop
     Remove-Item -LiteralPath $DownloadDir -Recurse -Force -ErrorAction SilentlyContinue
 
-    $RunScript = Get-ChildItem -LiteralPath $AppDir -Filter 'Run.ps1' -Recurse -File | Sort-Object { $_.FullName.Length } | Select-Object -First 1
-    if ($null -eq $RunScript) { throw 'Run.ps1 nao encontrado no pacote baixado.' }
-
     $ProgressPreference = $PreviousProgress
-    Write-Host ' [ OK ] Pacote carregado. Iniciando o Otimizador...' -ForegroundColor Green
-    & $RunScript.FullName
+    Write-Host ' [ OK ] Executavel pronto. Iniciando o Otimizador...' -ForegroundColor Green
+    Start-Process -FilePath $FinalExePath
 } catch {
     $ProgressPreference = $PreviousProgress
     Write-Host " [ERRO] Falha ao baixar e iniciar o Otimizador: $($_.Exception.Message)" -ForegroundColor Red
