@@ -14,7 +14,7 @@ O **Otimizador de Windows** é um executável nativo (`.exe`, compilado em C# / 
 
 ---
 
-## ⚡ Execução Rápida
+## Execução Rápida
 
 ### Opção 1: Executável Direto na Raiz (Recomendado — Funciona com PowerShell/Batch bloqueados)
 1. Baixe diretamente o [**`Otimizador-Windows.exe`**](./Otimizador-Windows.exe) na raiz do repositório, na [última release](https://github.com/raphael-c-martins/Otimizador-Windows-10-11/releases/latest) (ou em `Code` → `Download ZIP`).
@@ -39,7 +39,7 @@ irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-1
 
 ---
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 - **Executável único sem dependências externas:** compilado para Windows 10 e 11 (`x64`, `.NET Framework 4.8` nativo do sistema) utilizando APIs nativas Win32, Registro 64-bit, WMI, WinRT e COM em vez de scripts externos.
 - **Interface gráfica (WPF Dark Mode):** perfis com 1 clique, aba dedicada **Privacidade & Segurança**, seleção granular de aplicativos e ajustes, busca e log ao vivo sem travar a janela.
@@ -53,7 +53,7 @@ irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-1
 
 ---
 
-## 📊 Perfis
+## Perfis
 
 Todos os 4 perfis vêm com o endurecimento de **Privacidade, IA e Desativação de Compartilhamentos Ocultos (`DisableAdminShares`)** selecionado por padrão (podendo ser desmarcado livremente na interface antes de executar).
 
@@ -66,7 +66,7 @@ Todos os 4 perfis vêm com o endurecimento de **Privacidade, IA e Desativação 
 
 ---
 
-## 🚀 Uso em Linha de Comando (SysAdmins)
+## Uso em Linha de Comando (SysAdmins)
 
 ```powershell
 # Modo terminal interativo
@@ -103,7 +103,7 @@ Start-Process -FilePath .\Otimizador-Windows.exe -ArgumentList '-Preset','Corpor
 
 ---
 
-## 📁 Onde ficam os dados
+## Onde ficam os dados
 
 | Pasta | Conteúdo |
 | :--- | :--- |
@@ -116,7 +116,7 @@ A pasta `%ProgramData%\OtimizadorWindows` aplica controle de acesso (ACL) nativo
 
 ---
 
-## 📂 Estrutura do Repositório
+## Estrutura do Repositório
 
 ```
 Otimizador-Windows-10-11/
@@ -161,7 +161,7 @@ Otimizador-Windows-10-11/
 
 ---
 
-## 🧪 Desenvolvimento e Compilação Local
+## Desenvolvimento e Compilação Local
 
 Compila nativamente em qualquer Windows 10 ou 11 usando o **MSBuild do .NET Framework 4.8** (não exige instalação de Visual Studio ou SDK extra):
 
@@ -183,7 +183,7 @@ Compila nativamente em qualquer Windows 10 ou 11 usando o **MSBuild do .NET Fram
 
 ---
 
-## 🤝 Contribuições
+## Contribuições
 
 1. Faça um Fork do projeto.
 2. Crie uma Branch (`git checkout -b feature/NovaOtimizacao`).
@@ -192,6 +192,6 @@ Compila nativamente em qualquer Windows 10 ou 11 usando o **MSBuild do .NET Fram
 
 ---
 
-## 📄 Licença
+## Licença
 
 Distribuído sob a licença **MIT**. Veja o arquivo [LICENSE](./LICENSE).

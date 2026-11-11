@@ -24,8 +24,9 @@
      - `ClearSystemTempFiles` passou a desativar a travessia de qualquer `ReparsePoint` (junções NTFS e links simbólicos) tanto na raiz do diretório temporário quanto em subpastas, removendo apenas o vínculo sem afetar arquivos do destino.
      - `Logger` e `ChangeJournal` geram nomes únicos caso duas execuções coincidam no mesmo segundo ou milissegundo (`(2)`, `(3)` para logs e `_002`, `_003` para diários, preservando a ordem mais-novo-primeiro do Undo), evitando sobrescrita de evidências.
      - `AppManager.InvokeWinGetUninstall` passou a sinalizar conclusão correta ao motor quando o WinGet remove um aplicativo não listado em Appx, evitando falso aviso de "não instalado".
-  5. **Reorganização para raiz ultra-limpa (`src/`):**
+  5. **Reorganização para raiz ultra-limpa (`src/`) e sobriedade visual (`AUD-04`):**
      - Projeto MSBuild (`src/Otimizador.csproj`), manifesto (`src/app.manifest`), ativos (`src/Assets/`), catálogos (`src/Config/`), testes (`src/tests/`, com 41 verificações automatizadas) e documentação (`src/docs/`) foram consolidados dentro de `src/`. Artefatos intermediários locais ficam isolados em `.build/` (ignorado pelo Git) e as regras do PSScriptAnalyzer em `.github/PSScriptAnalyzerSettings.psd1`, mantendo na raiz apenas `Otimizador-Windows.exe`, `get.ps1`, `README.md` e `LICENSE`.
+     - Removida a maior parte dos emojis excessivos em abas, cards, categorias e botões da GUI WPF e nos subtítulos de documentação, evitando falhas de glifos com variation selector (`FE0F`) e preservando visual corporativo sóbrio.
 
 ---
 

@@ -76,13 +76,13 @@ namespace Otimizador.UI
 
         private static readonly Dictionary<string, string> AppCategoryNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "Gaming", "🎮 Jogos & Xbox" },
-            { "AI", "🤖 Inteligência Artificial & Copilot" },
-            { "Productivity", "💼 Produtividade & Office" },
-            { "Communication", "💬 Comunicação & Mensagens" },
-            { "Media", "🎬 Mídia, Vídeo & Áudio" },
-            { "Utilities", "🛠️ Utilitários & Notícias" },
-            { "ThirdPartyBloat", "📦 Bloatware Pré-instalado (OEM / Patrocinados)" }
+            { "Gaming", "Jogos & Xbox" },
+            { "AI", "Inteligência Artificial & Copilot" },
+            { "Productivity", "Produtividade & Office" },
+            { "Communication", "Comunicação & Mensagens" },
+            { "Media", "Mídia, Vídeo & Áudio" },
+            { "Utilities", "Utilitários & Notícias" },
+            { "ThirdPartyBloat", "Bloatware Pré-instalado (OEM / Patrocinados)" }
         };
 
         internal static ImageSource LoadApplicationIcon()

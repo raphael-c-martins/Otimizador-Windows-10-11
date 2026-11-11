@@ -19,12 +19,13 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 - **Prevenção de sobrescrita em logs e diários:** `Logger.ResolveUniqueFilePath` acrescenta sufixos `(2)`, `(3)` para logs no mesmo segundo, e `ChangeJournal.ResolveUniqueJournalPath` usa `_002`, `_003` em execuções no mesmo milissegundo mantendo a ordenação reversa do Undo.
 - **Contabilização correta no WinGet:** `AppManager.InvokeWinGetUninstall` sinaliza sucesso quando o `winget` conclui a remoção sem pacote Appx detectado previamente.
 - **Bootstrap opcional atualizado (`get.ps1`):** passa a baixar diretamente `Otimizador-Windows.exe` e exigir a validação SHA256 da release antes de iniciar.
-- **Segurança no CI e `.gitignore` (`.github/workflows/ci.yml`):** adicionada varredura automática de segredos com `gitleaks`, controle de concorrência, atualização das actions para Node 24 e regras no `.gitignore` para `.build/`, certificados `.pfx`, bancos `.db`/`.sqlite` e pastas locais de ferramentas.
+- **Segurança no CI e `.gitignore` (`.github/workflows/ci.yml`):** adicionada varredura automática de segredos com `gitleaks`, controle de concorrência, atualização das actions para Node 24 e regras no `.gitignore` para `.build/`, certificados `.pfx`, bancos `.db`/`.sqlite`/`.sqlite3` e pasta local `/.claude/`.
+- **Padronização visual da interface e documentação (`AUD-04`):** removida a maioria dos emojis excessivos nos botões, abas, cards e categorias da janela WPF (`src/UI/MainWindow.xaml` e `src/UI/MainWindowGUI.cs`) e nos subtítulos de documentação (`README.md`, `CHANGELOG.md`, `ideias-pendentes.md`), preservando apenas o marcador principal no cabeçalho e evitando problemas de glifos com variation selector em fontes mais antigas.
 
 ---
 
 ## [v14.0 - Auditoria, Motor Único e Undo Exato] - 2026-10-21
-### ✨ Adicionado
+### Adicionado
 - **Motor único de execução:** GUI e terminal usam o mesmo motor; cada ajuste do `Tweaks.json` aponta para sua própria função (campo `Function`).
 - **Diário de alterações e Undo exato:** valores originais de registro, serviços, tarefas e energia são gravados antes de cada mudança e restaurados exatamente pelo Undo.
 - **Modo simulação (`-DryRun`):** mostra tudo o que seria feito sem alterar nada e sem exigir Administrador.
@@ -33,7 +34,7 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 - **Códigos de saída para automação:** 0 sucesso, 1 erro de uso/permissão, 2 etapas com erro, 3 abortado sem ponto de restauração.
 - **Testes e CI:** suíte Pester em `/tests` e GitHub Actions com verificação de sintaxe, PSScriptAnalyzer e testes. Workflow de release com SHA256.
 
-### 🔧 Corrigido
+### Corrigido
 - O OneDrive virou um ajuste que pode ser desmarcado; o perfil Corporativo não o remove mais (Padrão, Gamer e Extremo continuam removendo).
 - A versão do programa saiu do título da janela e do cabeçalho do terminal (continua registrada no log).
 - O ponto de restauração é confirmado; falhas não aparecem mais como sucesso.
@@ -55,7 +56,7 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 ---
 
 ## [v13.0 - Arquitetura Modular & Interface Gráfica Moderna] - 2026-08-21
-### ✨ Adicionado
+### Adicionado
 - **Interface Gráfica Completa (Fluent Dark Mode GUI):** Janela moderna estilo Windows 11 com menu lateral (Sidebar), cards de perfis com 1 clique, painéis de personalização de aplicativos, privacidade, performance e terminal de logs ao vivo.
 - **Módulo de Threading Não-Bloqueante (`ThreadingManager.ps1`):** Implementado bombeamento de eventos da interface gráfica (`Invoke-DoEvents`) e execução assíncrona (`Invoke-NonBlocking`), garantindo 60 FPS e eliminando qualquer risco de travamento ou estado de "Não está respondendo".
 - **Pré-Cache em Memória de Pacotes DISM (`AppManager.ps1`):** Leitura otimizada de pacotes provisionados com busca em RAM, reduzindo o tempo de remoção de 2 minutos para menos de 10 segundos.
@@ -65,7 +66,7 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 - **Engine de Reversão / Desfazer (`UndoManager.ps1`):** Opção com 1 clique na interface gráfica e via CLI para restaurar serviços (SysMain, WSearch), menu nativo do Windows 11 e protocolos do Xbox.
 - **Suporte Bimodal Completo (GUI & CLI para SysAdmins):** Execução gráfica nativa ao dar duplo clique no `Otimizador.cmd`, com suporte a parâmetros de linha de comando (`-CLI`, `-Preset Gamer`, `-Silent`, `-SkipRestorePoint`, `-Undo`).
 
-### 🔧 Modificado & Corrigido
+### Modificado & Corrigido
 - **Correção Definitiva de Encoding UTF-8 com BOM:** Todos os arquivos de script e catálogos foram regravados com assinatura UTF-8 com BOM (`0xEF 0xBB 0xBF`) e o launcher `.cmd` em ANSI limpo sem BOM, eliminando qualquer problema de caracteres especiais (*Mojibake*) ou eco de comandos no terminal.
 - **Launcher Mestre (`Otimizador.cmd`):** Auto-elevação UAC silenciosa com lançamento direto da janela visual sem terminal concorrente visível.
 

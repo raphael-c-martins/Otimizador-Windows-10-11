@@ -69,13 +69,13 @@
             </Grid.ColumnDefinitions>
             <Border Grid.Column="0" Background="#161616" BorderBrush="#242424" BorderThickness="0,0,1,0" Padding="8,12">
                 <StackPanel>
-                    <Button Name="NavBtnPresets" Style="{StaticResource NavBtnStyle}" Content="⚡ Perfis Rápidos (Presets)" Background="#222222" Foreground="#00B4D8"/>
-                    <Button Name="NavBtnApps" Style="{StaticResource NavBtnStyle}" Content="📦 Aplicativos (Debloat)"/>
-                    <Button Name="NavBtnPrivacy" Style="{StaticResource NavBtnStyle}" Content="🛡️ Privacidade &amp; Segurança"/>
-                    <Button Name="NavBtnPerformance" Style="{StaticResource NavBtnStyle}" Content="⚙️ Performance &amp; Sistema"/>
-                    <Button Name="NavBtnLogs" Style="{StaticResource NavBtnStyle}" Content="📝 Terminal de Logs"/>
+                    <Button Name="NavBtnPresets" Style="{StaticResource NavBtnStyle}" Content="Perfis Rápidos (Presets)" Background="#222222" Foreground="#00B4D8"/>
+                    <Button Name="NavBtnApps" Style="{StaticResource NavBtnStyle}" Content="Aplicativos (Debloat)"/>
+                    <Button Name="NavBtnPrivacy" Style="{StaticResource NavBtnStyle}" Content="Privacidade &amp; Segurança"/>
+                    <Button Name="NavBtnPerformance" Style="{StaticResource NavBtnStyle}" Content="Performance &amp; Sistema"/>
+                    <Button Name="NavBtnLogs" Style="{StaticResource NavBtnStyle}" Content="Terminal de Logs"/>
                     <Separator Background="#2A2A2A" Margin="4,10"/>
-                    <Button Name="NavBtnUndo" Style="{StaticResource NavBtnStyle}" Content="🔄 Restaurar (Undo)" Foreground="#F39C12"/>
+                    <Button Name="NavBtnUndo" Style="{StaticResource NavBtnStyle}" Content="Restaurar (Undo)" Foreground="#F39C12"/>
                 </StackPanel>
             </Border>
             <Grid Grid.Column="1" Margin="16,12,16,12">
@@ -95,7 +95,7 @@
                                 </Grid.RowDefinitions>
                                 <Border Grid.Row="0" Grid.Column="0" Background="#1C1C1C" BorderBrush="#0077B6" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
-                                        <TextBlock Text="🚀 PADRÃO (Equilibrado)" FontSize="15" FontWeight="Bold" Foreground="#00B4D8"/>
+                                        <TextBlock Text="PADRÃO (Equilibrado)" FontSize="15" FontWeight="Bold" Foreground="#00B4D8"/>
                                         <TextBlock Text="Recomendado para uso diário. Remove bloatwares comuns, desativa telemetria e compartilhamentos ocultos, e ajusta interface e energia."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetPadrao" Content="Carregar Perfil Padrão" Background="#0077B6" BorderBrush="#0096C7"/>
@@ -103,7 +103,7 @@
                                 </Border>
                                 <Border Grid.Row="0" Grid.Column="1" Background="#1C1C1C" BorderBrush="#2ECC71" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
-                                        <TextBlock Text="🎮 GAMER (Máximo FPS)" FontSize="15" FontWeight="Bold" Foreground="#2ECC71"/>
+                                        <TextBlock Text="GAMER (Máximo FPS)" FontSize="15" FontWeight="Bold" Foreground="#2ECC71"/>
                                         <TextBlock Text="Preserva o ecossistema Xbox e Game Pass, desativa gravação de fundo (GameDVR) e aplica plano de energia Ultimate Performance (exceto em notebooks)."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetGamer" Content="Carregar Perfil Gamer" Background="#27AE60" BorderBrush="#2ECC71"/>
@@ -111,7 +111,7 @@
                                 </Border>
                                 <Border Grid.Row="1" Grid.Column="0" Background="#1C1C1C" BorderBrush="#9B59B6" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
-                                        <TextBlock Text="💼 CORPORATIVO (Escritório)" FontSize="15" FontWeight="Bold" Foreground="#AF7AC5"/>
+                                        <TextBlock Text="CORPORATIVO (Escritório)" FontSize="15" FontWeight="Bold" Foreground="#AF7AC5"/>
                                         <TextBlock Text="Foco em produtividade, privacidade e endurecimento de segurança. Preserva Teams, Outlook e OneDrive, remove jogos e bloqueia telemetrias."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetCorp" Content="Carregar Perfil Corporativo" Background="#8E44AD" BorderBrush="#9B59B6"/>
@@ -119,7 +119,7 @@
                                 </Border>
                                 <Border Grid.Row="1" Grid.Column="1" Background="#1C1C1C" BorderBrush="#E74C3C" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
-                                        <TextBlock Text="🔥 EXTREMO (Hardware Antigo)" FontSize="15" FontWeight="Bold" Foreground="#E74C3C"/>
+                                        <TextBlock Text="EXTREMO (Hardware Antigo)" FontSize="15" FontWeight="Bold" Foreground="#E74C3C"/>
                                         <TextBlock Text="Otimização agressiva para computadores lentos. Desativa SysMain/WSearch e remove o Microsoft Edge."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetExtremo" Content="Carregar Perfil Extremo" Background="#C0392B" BorderBrush="#E74C3C"/>
@@ -182,12 +182,12 @@
                     <TextBox Name="LogOutputBox" Grid.Row="0" Background="#0D0D0D" Foreground="#00FF66"
                              FontFamily="Consolas" FontSize="12" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
                              TextWrapping="Wrap" Padding="10"/>
-                    <Button Name="BtnOpenLogsFolder" Grid.Row="1" Content="📁 Abrir Pasta de Logs" Margin="0,8,0,0" HorizontalAlignment="Right"/>
+                    <Button Name="BtnOpenLogsFolder" Grid.Row="1" Content="Abrir Pasta de Logs" Margin="0,8,0,0" HorizontalAlignment="Right"/>
                 </Grid>
                 <Grid Name="PanelUndo" Visibility="Collapsed">
                     <Border Background="#1C1C1C" BorderBrush="#F39C12" BorderThickness="1" CornerRadius="6" Padding="20" VerticalAlignment="Top">
                         <StackPanel>
-                            <TextBlock Text="🔄 Restauração e Reversão do Sistema" FontSize="18" FontWeight="Bold" Foreground="#F39C12"/>
+                            <TextBlock Text="Restauração e Reversão do Sistema" FontSize="18" FontWeight="Bold" Foreground="#F39C12"/>
                             <TextBlock Text="Cada execução grava um diário com os valores originais de registro, serviços, tarefas agendadas e plano de energia. A restauração devolve tudo ao estado exato anterior, da execução mais recente para a mais antiga. Aplicativos removidos e o Microsoft Edge não são reinstalados (use a Microsoft Store)."
                                        FontSize="13" Foreground="#C0C0C0" TextWrapping="Wrap" Margin="0,10,0,20"/>
                             <Button Name="BtnUndoAction" Content="Restaurar Configurações Anteriores Agora" Background="#D35400" BorderBrush="#E67E22"
@@ -213,7 +213,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Name="BtnCloseWindow" Content="Fechar" Width="85" Margin="0,0,8,0"/>
-                    <Button Name="BtnApplyOptimization" Content="⚡ EXECUTAR OTIMIZAÇÃO"
+                    <Button Name="BtnApplyOptimization" Content="EXECUTAR OTIMIZAÇÃO"
                             Background="#27AE60" BorderBrush="#2ECC71" FontWeight="Bold" FontSize="13" Padding="16,8"/>
                 </StackPanel>
             </Grid>
