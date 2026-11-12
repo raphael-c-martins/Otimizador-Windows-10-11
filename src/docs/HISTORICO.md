@@ -5,6 +5,24 @@
 
 ---
 
+### [2026-11-12] - Endurecimento de Cibersegurança Lote 1 (v15.1)
+
+- **Contexto e Motivação:**
+  Com a consolidação da v15.0 em executável nativo C# e o isolamento de compartilhamentos administrativos ocultos (`DisableAdminShares`), decidiu-se ampliar a aba **Privacidade & Segurança** com um primeiro lote de 8 ajustes defensivos de baixo risco e alto impacto prático, cobrindo protocolos legados de rede, proteção de credenciais em memória, mídias removíveis e bloqueio de aplicativos indesejados.
+
+- **Decisões Arquiteturais e Soluções Técnicas:**
+  1. **Especificações declarativas e testáveis no `SecurityManager.cs`:**
+     - Cada proteção do Lote 1 (`DisableSMBv1`, `DisableWDigest`, `DisableLLMNR`, `DisableAutoRunAndAutoPlay`, `DisableAnonymousAccess`, `DisableSMBInsecureGuestAuth`, `DisableRemoteAssistance` e `EnableDefenderPUAProtection`) expõe suas especificações de registro (`RegistrySettingSpec`) em método próprio e grava todas as chaves pelo `ChangeJournal.SetRegistryValue`, assegurando reversão exata via `-Undo` e execução idempotente pelo motor único (`OptimizationEngine.TweakHandlers`).
+  2. **Tratamento seguro do protocolo SMBv1 (`DisableSMBv1`):**
+     - Além de gravar `SMB1 = 0` em `LanmanServer\Parameters`, o método inspeciona `LanmanWorkstation\DependOnService` e remove `MRxSmb10` (quando presente) antes de desativar o driver `mrxsmb10` (`Start = 4`), evitando falha de inicialização do serviço Estação de Trabalho após reiniciar o Windows. Quando `mrxsmb10` não existe no sistema (instalações limpas do Windows 11), registra informação sem gerar falso erro.
+  3. **Proteção PUA no Microsoft Defender respeitando ACLs e Tamper Protection:**
+     - Em vez de escrever na chave operacional do Defender (protegida por `TrustedInstaller`/`WinDefend` com somente leitura para `BUILTIN\Administradores` e bloqueada pela Proteção contra Adulterações), a diretiva é gravada sob `HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender` (`PUAProtection = 1` e `MpEngine\MpEnablePus = 1`), com tratamento explícito de `UnauthorizedAccessException`/`SecurityException` como `AVISO` caso outra política local restrinja a gravação.
+  4. **Ativação padrão nos 4 perfis e cobertura de testes sem mutar o sistema real:**
+     - Todos os 8 ajustes foram adicionados com `SelectedByDefault = true` em `src/Config/Tweaks.json` e incluídos nos 4 perfis (`Padrao`, `Gamer`, `Corporativo`, `Extremo`).
+     - `CatalogoTests` e `SegurancaTests` passaram para 44 verificações automatizadas, validando os caminhos/valores esperados, a filtragem de `DependOnService` e a aplicação + Undo completo em chaves temporárias sob `HKCU`.
+
+---
+
 ### [2026-11-10] - Migração para Executável Nativo C# (.NET 4.8) e Endurecimento SMB (v15.0)
 
 - **Contexto e Motivação:**

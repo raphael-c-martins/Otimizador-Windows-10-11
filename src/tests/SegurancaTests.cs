@@ -155,6 +155,146 @@ namespace Otimizador.Tests
                     TestHelpers.DeleteDirectorySafe(tmpDir);
                 }
             });
+
+            runner.Describe("Cibersegurança - Lote 1 (Endurecimento de sistema e Undo)");
+
+            runner.It("define exatamente os caminhos e valores esperados para todos os 8 ajustes do Lote 1", delegate
+            {
+                RegistrySettingSpec[] smbv1 = SecurityManager.GetSMBv1ServerSettings();
+                Assert.Equal(1, smbv1.Length);
+                Assert.Equal(SecurityManager.LanmanParametersPath, smbv1[0].Path);
+                Assert.Equal("SMB1", smbv1[0].Name);
+                Assert.Equal(0, smbv1[0].Value);
+
+                RegistrySettingSpec[] wdigest = SecurityManager.GetWDigestSettings();
+                Assert.Equal(1, wdigest.Length);
+                Assert.Equal(SecurityManager.WDigestPath, wdigest[0].Path);
+                Assert.Equal("UseLogonCredential", wdigest[0].Name);
+                Assert.Equal(0, wdigest[0].Value);
+
+                RegistrySettingSpec[] llmnr = SecurityManager.GetLLMNRSettings();
+                Assert.Equal(1, llmnr.Length);
+                Assert.Equal(SecurityManager.DnsClientPolicyPath, llmnr[0].Path);
+                Assert.Equal("EnableMulticast", llmnr[0].Name);
+                Assert.Equal(0, llmnr[0].Value);
+
+                RegistrySettingSpec[] autorun = SecurityManager.GetAutoRunAndAutoPlaySettings();
+                Assert.Equal(5, autorun.Length);
+                Assert.Equal(255, autorun[0].Value);
+                Assert.Equal(1, autorun[1].Value);
+                Assert.Equal(255, autorun[2].Value);
+                Assert.Equal(1, autorun[3].Value);
+                Assert.Equal(1, autorun[4].Value);
+
+                RegistrySettingSpec[] anon = SecurityManager.GetAnonymousAccessSettings();
+                Assert.Equal(2, anon.Length);
+                Assert.Equal("RestrictAnonymous", anon[0].Name);
+                Assert.Equal(1, anon[0].Value);
+                Assert.Equal("RestrictAnonymousSAM", anon[1].Name);
+                Assert.Equal(1, anon[1].Value);
+
+                RegistrySettingSpec[] smbGuest = SecurityManager.GetSMBInsecureGuestAuthSettings();
+                Assert.Equal(2, smbGuest.Length);
+                Assert.Equal("AllowInsecureGuestAuth", smbGuest[0].Name);
+                Assert.Equal(0, smbGuest[0].Value);
+                Assert.Equal(0, smbGuest[1].Value);
+
+                RegistrySettingSpec[] remoteAssist = SecurityManager.GetRemoteAssistanceSettings();
+                Assert.Equal(2, remoteAssist.Length);
+                Assert.Equal("fAllowToGetHelp", remoteAssist[0].Name);
+                Assert.Equal(0, remoteAssist[0].Value);
+                Assert.Equal("fAllowFullControl", remoteAssist[1].Name);
+                Assert.Equal(0, remoteAssist[1].Value);
+
+                RegistrySettingSpec[] pua = SecurityManager.GetDefenderPUAProtectionSettings();
+                Assert.Equal(2, pua.Length);
+                Assert.Equal("PUAProtection", pua[0].Name);
+                Assert.Equal(1, pua[0].Value);
+                Assert.Equal("MpEnablePus", pua[1].Name);
+                Assert.Equal(1, pua[1].Value);
+            });
+
+            runner.It("remove MRxSmb10 de DependOnService preservando os demais drivers sem alterações quando ausente", delegate
+            {
+                string[] updated = SecurityManager.FilterDependOnService(
+                    new string[] { "Bowser", "mrxsmb10", "MRxSmb20", "NSI" },
+                    "MRxSmb10");
+                Assert.IsNotNull(updated);
+                Assert.Equal(3, updated.Length);
+                Assert.Equal("Bowser", updated[0]);
+                Assert.Equal("MRxSmb20", updated[1]);
+                Assert.Equal("NSI", updated[2]);
+
+                string[] unchanged = SecurityManager.FilterDependOnService(
+                    new string[] { "Bowser", "MRxSmb20", "NSI" },
+                    "MRxSmb10");
+                Assert.IsNull(unchanged);
+            });
+
+            runner.It("aplica todas as especificações do Lote 1 em chaves temporárias HKCU e reverte exatamente via Undo", delegate
+            {
+                string tmpDir = TestHelpers.NewTempDirectory("OtimizadorLote1Test");
+                string testPrefix = "Software\\OtimizadorWindows-Lote1-" + Guid.NewGuid().ToString("N");
+                var allSpecs = new List<RegistrySettingSpec>();
+                allSpecs.AddRange(SecurityManager.GetSMBv1ServerSettings());
+                allSpecs.AddRange(SecurityManager.GetWDigestSettings());
+                allSpecs.AddRange(SecurityManager.GetLLMNRSettings());
+                allSpecs.AddRange(SecurityManager.GetAutoRunAndAutoPlaySettings());
+                allSpecs.AddRange(SecurityManager.GetAnonymousAccessSettings());
+                allSpecs.AddRange(SecurityManager.GetSMBInsecureGuestAuthSettings());
+                allSpecs.AddRange(SecurityManager.GetRemoteAssistanceSettings());
+                allSpecs.AddRange(SecurityManager.GetDefenderPUAProtectionSettings());
+
+                try
+                {
+                    // Pré-semeia um valor anterior para testar preservação e restauração de valor existente no Undo
+                    string preExistingPath = SecurityManager.BuildMappedTestPath(SecurityManager.LsaPath, testPrefix);
+                    RegistryLocation preExistingLoc = ChangeJournal.ConvertToRegistryLocation(preExistingPath);
+                    using (Microsoft.Win32.RegistryKey preKey = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(preExistingLoc.SubKey))
+                    {
+                        preKey.SetValue("RestrictAnonymous", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                    }
+
+                    string journalPath = ChangeJournal.Start(tmpDir);
+                    SecurityManager.ApplyRegistrySettings(allSpecs, testPrefix);
+                    ChangeJournal.Stop();
+
+                    foreach (RegistrySettingSpec spec in allSpecs)
+                    {
+                        string mapped = SecurityManager.BuildMappedTestPath(spec.Path, testPrefix);
+                        RegistryLocation loc = ChangeJournal.ConvertToRegistryLocation(mapped);
+                        using (Microsoft.Win32.RegistryKey k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(loc.SubKey))
+                        {
+                            Assert.IsNotNull(k, "Chave deveria existir após aplicação: " + loc.SubKey);
+                            Assert.Equal(spec.Value, Convert.ToInt32(k.GetValue(spec.Name)),
+                                string.Format("Valor divergente para {0}.", spec.Name));
+                        }
+                    }
+
+                    UndoResult undo = ChangeJournal.RestoreJournalFile(journalPath);
+                    Assert.Equal(0, undo.Failed);
+                    Assert.GreaterThan(undo.Restored, allSpecs.Count);
+
+                    using (Microsoft.Win32.RegistryKey restoredKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(preExistingLoc.SubKey))
+                    {
+                        Assert.IsNotNull(restoredKey, "Chave pré-existente deve permanecer após Undo.");
+                        Assert.Equal(0, Convert.ToInt32(restoredKey.GetValue("RestrictAnonymous")), "Valor original pré-existente deve voltar para 0.");
+                        Assert.IsNull(restoredKey.GetValue("RestrictAnonymousSAM"), "Valor criado pelo Lote 1 deve ser removido no Undo.");
+                    }
+
+                    RegistryLocation wdigestLoc = ChangeJournal.ConvertToRegistryLocation(
+                        SecurityManager.BuildMappedTestPath(SecurityManager.WDigestPath, testPrefix));
+                    using (Microsoft.Win32.RegistryKey removedWDigest = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(wdigestLoc.SubKey))
+                    {
+                        Assert.IsNull(removedWDigest, "Chaves criadas apenas pela otimização devem ser removidas no Undo.");
+                    }
+                }
+                finally
+                {
+                    try { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(testPrefix, false); } catch { }
+                    TestHelpers.DeleteDirectorySafe(tmpDir);
+                }
+            });
         }
     }
 }

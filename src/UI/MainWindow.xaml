@@ -96,7 +96,7 @@
                                 <Border Grid.Row="0" Grid.Column="0" Background="#1C1C1C" BorderBrush="#0077B6" BorderThickness="2" CornerRadius="6" Margin="6" Padding="14">
                                     <StackPanel>
                                         <TextBlock Text="PADRÃO (Equilibrado)" FontSize="15" FontWeight="Bold" Foreground="#00B4D8"/>
-                                        <TextBlock Text="Recomendado para uso diário. Remove bloatwares comuns, desativa telemetria e compartilhamentos ocultos, e ajusta interface e energia."
+                                        <TextBlock Text="Recomendado para uso diário. Remove bloatwares comuns, desativa telemetria, aplica endurecimento de segurança e ajusta interface e energia."
                                                    FontSize="12" Foreground="#A0A0A0" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                         <Button Name="BtnPresetPadrao" Content="Carregar Perfil Padrão" Background="#0077B6" BorderBrush="#0096C7"/>
                                     </StackPanel>

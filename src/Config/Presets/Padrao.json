@@ -13,6 +13,6 @@
     "XboxGamingOverlay", "XboxApp", "MicrosoftTeams", "MicrosoftStickyNotes", "ZuneMusic", "WindowsSoundRecorder", "YourPhone", "QuickAssist"
   ],
   "ApplyTweaks": [
-    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI", "DisableCopilot", "DisableAdminShares", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan", "OptimizeVisualEffects", "HideTaskbarExtraButtons", "DisableStartMenuWebSearch", "ClearTempFiles", "RemoveOneDrive"
+    "DisableTelemetry", "DisableActivityHistory", "DisableWindowsSuggestions", "DisableRecallAndAI", "DisableCopilot", "DisableAdminShares", "DisableSMBv1", "DisableWDigest", "DisableLLMNR", "DisableAutoRunAndAutoPlay", "DisableAnonymousAccess", "DisableSMBInsecureGuestAuth", "DisableRemoteAssistance", "EnableDefenderPUAProtection", "DisableEdgeBackgroundAndAds", "DisableGameDVR", "RestoreClassicContextMenu", "ShowFileExtensions", "DisableFastStartup", "InjectUltimatePerformancePlan", "OptimizeVisualEffects", "HideTaskbarExtraButtons", "DisableStartMenuWebSearch", "ClearTempFiles", "RemoveOneDrive"
   ]
 }

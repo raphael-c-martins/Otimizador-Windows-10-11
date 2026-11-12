@@ -10,7 +10,7 @@
 
 <br>
 
-O **Otimizador de Windows** é um executável nativo (`.exe`, compilado em C# / .NET Framework 4.8 WPF) que remove bloatware, bloqueia telemetria e recursos de IA (Windows Recall, Copilot e Click-to-Do), endurece a segurança de rede (desativação de compartilhamentos administrativos ocultos `C$`, `D$`, `ADMIN$`) e aplica ajustes de interface e desempenho sem depender de arquivos `.bat`, `.cmd` ou PowerShell em tempo de execução. Toda alteração fica registrada em diário para reversão exata.
+O **Otimizador de Windows** é um executável nativo (`.exe`, compilado em C# / .NET Framework 4.8 WPF) que remove bloatware, bloqueia telemetria e recursos de IA (Windows Recall, Copilot e Click-to-Do), endurece a segurança do sistema e da rede (compartilhamentos ocultos `C$`/`D$`/`ADMIN$`, SMBv1, WDigest, LLMNR, AutoRun/AutoPlay, acesso anônimo, logon de convidado SMB, Assistência Remota e proteção PUA no Defender) e aplica ajustes de interface e desempenho sem depender de arquivos `.bat`, `.cmd` ou PowerShell em tempo de execução. Toda alteração fica registrada em diário para reversão exata.
 
 ---
 
@@ -43,8 +43,10 @@ irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-1
 
 - **Executável único sem dependências externas:** compilado para Windows 10 e 11 (`x64`, `.NET Framework 4.8` nativo do sistema) utilizando APIs nativas Win32, Registro 64-bit, WMI, WinRT e COM em vez de scripts externos.
 - **Interface gráfica (WPF Dark Mode):** perfis com 1 clique, aba dedicada **Privacidade & Segurança**, seleção granular de aplicativos e ajustes, busca e log ao vivo sem travar a janela.
-- **Cibersegurança (Compartilhamentos Administrativos Ocultos):** desativa a criação automática de `C$`, `D$` e `ADMIN$` (`AutoShareWks = 0` em Windows Cliente ou `AutoShareServer = 0` em Windows Server) sem apagar pastas compartilhadas manualmente. Reinicia o serviço `LanmanServer` de forma controlada e confirma que `C$`, `D$` e `ADMIN$` deixaram de responder, mantendo compartilhamentos manuais, `IPC$` e `print$`.
-  > **Atenção:** reiniciar o serviço `LanmanServer` pode interromper brevemente conexões SMB ativas e impactar ferramentas de administração remota ou backup que dependam de `C$` / `ADMIN$`. Avalie antes de aplicar e use `-Undo` caso precise restaurar.
+- **Cibersegurança e Endurecimento do Sistema (9 ajustes nativos reversíveis):**
+  - **Compartilhamentos administrativos ocultos (`DisableAdminShares`):** desativa a criação automática de `C$`, `D$` e `ADMIN$` (`AutoShareWks = 0` ou `AutoShareServer = 0`) sem apagar pastas compartilhadas manualmente, com reinício controlado do `LanmanServer` e conferência pós-aplicação.
+  - **Proteção contra ameaças de rede, credenciais e mídias (Lote 1):** desativa o protocolo legado SMBv1 (`SMB1 = 0` + driver `mrxsmb10`), bloqueia senhas em texto claro na memória via WDigest (`UseLogonCredential = 0`), desliga resolução multicast LLMNR (`EnableMulticast = 0`), desativa AutoRun e Reprodução Automática em pendrives/discos, restringe acesso e enumeração anônima no LSA/SAM (`RestrictAnonymous` e `RestrictAnonymousSAM`), bloqueia logon de convidado SMB sem senha (`AllowInsecureGuestAuth = 0`), desativa a Assistência Remota nativa e habilita o bloqueio PUA (aplicativos indesejados) por diretiva do Microsoft Defender.
+  > **Atenção:** reiniciar o `LanmanServer` pode interromper brevemente conexões SMB ativas; bloquear logon de convidado SMB sem senha pode impactar NAS/impressoras antigas sem autenticação; e o bloqueio de SMBv1 requer reinicialização do Windows para efeito completo. Tudo pode ser revertido via `-Undo`.
 - **Modo simulação (`-DryRun`):** mostra tudo o que seria feito sem alterar o sistema e sem exigir privilégio de Administrador.
 - **Ponto de restauração confirmado:** verifica via WMI se o Windows realmente criou o ponto. Se falhar, você decide se continua.
 - **Undo exato:** grava os valores originais de registro, serviços (incluindo reinício coordenado pós-reversão no `LanmanServer`), tarefas agendadas e energia em diário para restaurar o estado exato anterior.
@@ -55,7 +57,7 @@ irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-1
 
 ## Perfis
 
-Todos os 4 perfis vêm com o endurecimento de **Privacidade, IA e Desativação de Compartilhamentos Ocultos (`DisableAdminShares`)** selecionado por padrão (podendo ser desmarcado livremente na interface antes de executar).
+Todos os 4 perfis vêm com os ajustes de **Privacidade, IA e os 9 itens de Cibersegurança** selecionados por padrão (podendo ser desmarcados livremente na interface antes de executar).
 
 | Perfil | Foco | Aplicativos | Xbox | OneDrive / Edge / Serviços |
 | :--- | :--- | :--- | :--- | :--- |
@@ -138,7 +140,7 @@ Otimizador-Windows-10-11/
 │   ├── Core/
 │   │   ├── OptimizationEngine.cs      # Motor único de execução (GUI e CLI)
 │   │   ├── ChangeJournal.cs           # Registro de snapshot e reversão (Undo)
-│   │   ├── SecurityManager.cs         # Hardening SMB (C$, D$, ADMIN$) e reinício seguro
+│   │   ├── SecurityManager.cs         # Hardening SMB (C$, D$, ADMIN$), Lote 1 e reinício seguro
 │   │   ├── AppManager.cs              # Remoção Appx/Provisioned (WinRT/DISM), WinGet e OneDrive
 │   │   ├── PrivacyManager.cs          # Telemetria, anúncios, Recall e Copilot
 │   │   ├── PerformanceManager.cs      # Interface, energia, serviços, Edge e limpeza segura

@@ -76,6 +76,70 @@
       "SelectedByDefault": true
     },
     {
+      "Id": "DisableSMBv1",
+      "Category": "Security",
+      "Function": "Disable-SMBv1",
+      "Name": "Desativar Protocolo Legado SMBv1 (Anti-Ransomware)",
+      "Description": "Desliga o protocolo SMBv1 (explorado por worms como WannaCry) no servidor SMB e no driver cliente mrxsmb10. Requer reinicialização do Windows para efeito completo.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableWDigest",
+      "Category": "Security",
+      "Function": "Disable-WDigest",
+      "Name": "Bloquear Senhas em Texto Claro na Memória (WDigest)",
+      "Description": "Define UseLogonCredential = 0 para impedir que o processo LSASS armazene credenciais em texto claro na memória RAM (proteção contra coleta por ferramentas como Mimikatz).",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableLLMNR",
+      "Category": "Security",
+      "Function": "Disable-LLMNR",
+      "Name": "Desativar Resolução de Nomes Multicast na Rede Local (LLMNR)",
+      "Description": "Desliga o protocolo LLMNR por diretiva (EnableMulticast = 0), evitando envenenamento de resolução de nomes e captura de hashes NTLM na rede local.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableAutoRunAndAutoPlay",
+      "Category": "Security",
+      "Function": "Disable-AutoRunAndAutoPlay",
+      "Name": "Desativar AutoRun e Reprodução Automática de Mídias (USB/Discos)",
+      "Description": "Bloqueia a execução automática ao conectar pendrives, HDs externos e mídias removíveis no sistema e no usuário atual.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableAnonymousAccess",
+      "Category": "Security",
+      "Function": "Disable-AnonymousAccess",
+      "Name": "Bloquear Acesso e Enumeração Anônima de Contas (LSA/SAM)",
+      "Description": "Impede que conexões sem autenticação enumerem usuários e compartilhamentos da máquina (RestrictAnonymous = 1 e RestrictAnonymousSAM = 1).",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableSMBInsecureGuestAuth",
+      "Category": "Security",
+      "Function": "Disable-SMBInsecureGuestAuth",
+      "Name": "Bloquear Logon de Convidado Inseguro no Cliente SMB",
+      "Description": "Impede acesso anônimo sem senha a compartilhamentos SMBv2/v3 na rede (AllowInsecureGuestAuth = 0). Atenção: pode bloquear NAS ou impressoras antigas sem autenticação configurada.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "DisableRemoteAssistance",
+      "Category": "Security",
+      "Function": "Disable-RemoteAssistance",
+      "Name": "Desativar Assistência Remota do Windows",
+      "Description": "Desliga convites e controle via Assistência Remota nativa (fAllowToGetHelp = 0), sem afetar a Área de Trabalho Remota (RDP) ou o Quick Assist.",
+      "SelectedByDefault": true
+    },
+    {
+      "Id": "EnableDefenderPUAProtection",
+      "Category": "Security",
+      "Function": "Enable-DefenderPUAProtection",
+      "Name": "Ativar Proteção contra Aplicativos Indesejados (Defender PUA)",
+      "Description": "Configura as diretivas do Microsoft Defender para bloquear adware, barras de navegador e instaladores empacotados indesejados (PUAProtection = 1 e MpEnablePus = 1).",
+      "SelectedByDefault": true
+    },
+    {
       "Id": "DisableGameDVR",
       "Category": "Gaming",
       "Function": "Disable-GameDVRBackgroundCapture",

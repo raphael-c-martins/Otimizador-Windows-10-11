@@ -4,6 +4,24 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 
 ---
 
+## [v15.1 - Lote 1 de Cibersegurança e Hardening] - 2026-11-12
+### Adicionado
+- **8 novos ajustes de Cibersegurança (Lote 1) em `SecurityManager.cs`, `Tweaks.json` e nos 4 perfis (`Padrao`, `Gamer`, `Corporativo`, `Extremo`):**
+  - `DisableSMBv1`: desativa o protocolo legado SMBv1 (`LanmanServer\Parameters\SMB1 = 0`), remove dependência `MRxSmb10` de `LanmanWorkstation` quando presente e desabilita o driver `mrxsmb10` (`Start = 4`), com suporte completo ao Undo.
+  - `DisableWDigest`: bloqueia o armazenamento de senhas em texto claro na memória do LSASS (`WDigest\UseLogonCredential = 0`).
+  - `DisableLLMNR`: desliga a resolução de nomes multicast na rede local por diretiva (`DNSClient\EnableMulticast = 0`).
+  - `DisableAutoRunAndAutoPlay`: desativa AutoRun e Reprodução Automática para unidades/USB no sistema e no usuário atual (`NoDriveTypeAutoRun = 255`, `NoAutorun = 1`, `DisableAutoplay = 1`).
+  - `DisableAnonymousAccess`: restringe acesso e enumeração anônima de contas SAM (`Lsa\RestrictAnonymous = 1` e `RestrictAnonymousSAM = 1`).
+  - `DisableSMBInsecureGuestAuth`: bloqueia logon de convidado sem senha no cliente SMB (`LanmanWorkstation\Parameters` e diretiva `AllowInsecureGuestAuth = 0`, com aviso sobre NAS/dispositivos antigos sem autenticação).
+  - `DisableRemoteAssistance`: desativa a Assistência Remota nativa do Windows (`fAllowToGetHelp = 0`, `fAllowFullControl = 0`) sem afetar RDP ou Quick Assist.
+  - `EnableDefenderPUAProtection`: ativa o bloqueio contra aplicativos potencialmente indesejados (PUA/adware) nas diretivas do Microsoft Defender (`PUAProtection = 1` e `MpEngine\MpEnablePus = 1`), tratando eventuais bloqueios de permissão como aviso.
+- **Testes automatizados ampliados para 44 verificações:** novas asserções em `CatalogoTests.cs` (consistência dos 9 ajustes de segurança nos catálogos e nos 4 perfis) e `SegurancaTests.cs` (validação das especificações do Lote 1, filtro `DependOnService` e teste isolado de aplicação + reversão por `ChangeJournal` em chave temporária `HKCU`).
+
+### Modificado
+- Atualizada a versão interna para `15.1` (`src/Core/Constants.cs`, `src/AssemblyInfo.cs`), recompilado o executável `Otimizador-Windows.exe` na raiz e atualizados o texto do card Padrão (`src/UI/MainWindow.xaml`) e a documentação.
+
+---
+
 ## [v15.0 - Executável Nativo C# e Hardening de Cibersegurança] - 2026-11-10
 ### Adicionado
 - **Executável nativo em C# / .NET Framework 4.8 (`Otimizador-Windows.exe` na raiz):** o programa agora é compilado para binário único `x64` disponibilizado diretamente na raiz do repositório (substituindo o antigo `Otimizador.cmd`) com catálogos (`src/Config/*.json`), ícone próprio e layout WPF (`src/UI/MainWindow.xaml`) embutidos, eliminando a necessidade de scripts `.bat`, `.cmd` ou `.ps1` em tempo de execução — ideal para estações corporativas com PowerShell bloqueado.

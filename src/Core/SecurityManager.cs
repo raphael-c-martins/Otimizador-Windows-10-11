@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Management;
+using System.Security;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -8,9 +9,36 @@ using Microsoft.Win32;
 
 namespace Otimizador.Core
 {
+    public sealed class RegistrySettingSpec
+    {
+        public string Path { get; private set; }
+        public string Name { get; private set; }
+        public int Value { get; private set; }
+
+        public RegistrySettingSpec(string path, string name, int value)
+        {
+            Path = path;
+            Name = name;
+            Value = value;
+        }
+    }
+
     public static class SecurityManager
     {
         public const string LanmanParametersPath = @"HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters";
+        public const string LanmanWorkstationServicePath = @"HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation";
+        public const string LanmanWorkstationParametersPath = @"HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters";
+        public const string LanmanWorkstationPolicyPath = @"HKLM:\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation";
+        public const string MrxSmb10ServicePath = @"HKLM:\SYSTEM\CurrentControlSet\Services\mrxsmb10";
+        public const string WDigestPath = @"HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest";
+        public const string DnsClientPolicyPath = @"HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient";
+        public const string ExplorerMachinePolicyPath = @"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer";
+        public const string ExplorerUserPolicyPath = @"HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer";
+        public const string AutoplayHandlersUserPath = @"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers";
+        public const string LsaPath = @"HKLM:\SYSTEM\CurrentControlSet\Control\Lsa";
+        public const string RemoteAssistancePath = @"HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance";
+        public const string DefenderPolicyPath = @"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender";
+        public const string DefenderMpEnginePolicyPath = @"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine";
         private static readonly Regex _adminShareRegex = new Regex(@"^(?:ADMIN\$|[A-Z]\$)$", RegexOptions.IgnoreCase);
 
         public static string GetAutoShareValueName(bool isServer)
@@ -251,6 +279,206 @@ namespace Otimizador.Core
             {
                 string preserved = activeShares.Count > 0 ? string.Join(", ", activeShares.ToArray()) : "nenhum";
                 Logger.Write("INFO", string.Format("Confirmação de compartilhamentos ativos: C$, D$ e ADMIN$ removidos. Ativos preservados: {0}.", preserved));
+            }
+        }
+
+        public static string BuildMappedTestPath(string originalPath, string hkcuSubKeyPrefix)
+        {
+            if (string.IsNullOrWhiteSpace(originalPath))
+            {
+                throw new ArgumentException("Caminho de registro original inválido.");
+            }
+            if (string.IsNullOrWhiteSpace(hkcuSubKeyPrefix))
+            {
+                return originalPath;
+            }
+            string cleanedPrefix = hkcuSubKeyPrefix.Trim('\\');
+            string relative = originalPath.Replace(":\\", "\\");
+            return string.Format(@"HKCU:\{0}\{1}", cleanedPrefix, relative);
+        }
+
+        public static void ApplyRegistrySettings(IEnumerable<RegistrySettingSpec> settings, string hkcuTestSubKeyPrefix = null)
+        {
+            if (settings == null) return;
+            foreach (RegistrySettingSpec spec in settings)
+            {
+                string targetPath = BuildMappedTestPath(spec.Path, hkcuTestSubKeyPrefix);
+                ChangeJournal.SetRegistryValue(targetPath, spec.Name, spec.Value, RegistryValueKind.DWord);
+            }
+        }
+
+        public static string[] FilterDependOnService(string[] currentDependencies, string driverToRemove)
+        {
+            if (currentDependencies == null || string.IsNullOrWhiteSpace(driverToRemove)) return null;
+
+            bool removed = false;
+            var kept = new List<string>();
+            foreach (string dep in currentDependencies)
+            {
+                if (string.Equals(dep, driverToRemove, StringComparison.OrdinalIgnoreCase))
+                {
+                    removed = true;
+                }
+                else if (!string.IsNullOrWhiteSpace(dep))
+                {
+                    kept.Add(dep);
+                }
+            }
+            return removed ? kept.ToArray() : null;
+        }
+
+        public static RegistrySettingSpec[] GetSMBv1ServerSettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(LanmanParametersPath, "SMB1", 0)
+            };
+        }
+
+        public static RegistrySettingSpec[] GetWDigestSettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(WDigestPath, "UseLogonCredential", 0)
+            };
+        }
+
+        public static RegistrySettingSpec[] GetLLMNRSettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(DnsClientPolicyPath, "EnableMulticast", 0)
+            };
+        }
+
+        public static RegistrySettingSpec[] GetAutoRunAndAutoPlaySettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(ExplorerMachinePolicyPath, "NoDriveTypeAutoRun", 255),
+                new RegistrySettingSpec(ExplorerMachinePolicyPath, "NoAutorun", 1),
+                new RegistrySettingSpec(ExplorerUserPolicyPath, "NoDriveTypeAutoRun", 255),
+                new RegistrySettingSpec(ExplorerUserPolicyPath, "NoAutorun", 1),
+                new RegistrySettingSpec(AutoplayHandlersUserPath, "DisableAutoplay", 1)
+            };
+        }
+
+        public static RegistrySettingSpec[] GetAnonymousAccessSettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(LsaPath, "RestrictAnonymous", 1),
+                new RegistrySettingSpec(LsaPath, "RestrictAnonymousSAM", 1)
+            };
+        }
+
+        public static RegistrySettingSpec[] GetSMBInsecureGuestAuthSettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(LanmanWorkstationParametersPath, "AllowInsecureGuestAuth", 0),
+                new RegistrySettingSpec(LanmanWorkstationPolicyPath, "AllowInsecureGuestAuth", 0)
+            };
+        }
+
+        public static RegistrySettingSpec[] GetRemoteAssistanceSettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(RemoteAssistancePath, "fAllowToGetHelp", 0),
+                new RegistrySettingSpec(RemoteAssistancePath, "fAllowFullControl", 0)
+            };
+        }
+
+        public static RegistrySettingSpec[] GetDefenderPUAProtectionSettings()
+        {
+            return new RegistrySettingSpec[]
+            {
+                new RegistrySettingSpec(DefenderPolicyPath, "PUAProtection", 1),
+                new RegistrySettingSpec(DefenderMpEnginePolicyPath, "MpEnablePus", 1)
+            };
+        }
+
+        public static void DisableSMBv1()
+        {
+            ApplyRegistrySettings(GetSMBv1ServerSettings());
+
+            RegistryLocation workstationLoc = ChangeJournal.ConvertToRegistryLocation(LanmanWorkstationServicePath);
+            using (RegistryKey baseKey = ChangeJournal.OpenBaseRegistryKey(workstationLoc.Hive))
+            using (RegistryKey key = baseKey.OpenSubKey(workstationLoc.SubKey))
+            {
+                if (key != null)
+                {
+                    string[] deps = key.GetValue("DependOnService") as string[];
+                    string[] filtered = FilterDependOnService(deps, "MRxSmb10");
+                    if (filtered != null)
+                    {
+                        ChangeJournal.SetRegistryValue(LanmanWorkstationServicePath, "DependOnService", filtered, RegistryValueKind.MultiString);
+                    }
+                }
+            }
+
+            if (ChangeJournal.TestRegistryKeyExists(MrxSmb10ServicePath))
+            {
+                ChangeJournal.SetRegistryValue(MrxSmb10ServicePath, "Start", 4, RegistryValueKind.DWord);
+                Logger.Write("INFO", "Protocolo SMBv1 desativado no servidor (SMB1=0) e driver cliente mrxsmb10 desabilitado (Start=4). Reinicie o Windows para efeito completo.");
+            }
+            else
+            {
+                Logger.Write("INFO", "Protocolo SMBv1 desativado no servidor (SMB1=0). Driver mrxsmb10 não está instalado neste sistema; reinicie o Windows se necessário.");
+            }
+        }
+
+        public static void DisableWDigest()
+        {
+            ApplyRegistrySettings(GetWDigestSettings());
+            Logger.Write("INFO", "Armazenamento de senhas em texto claro no WDigest bloqueado (UseLogonCredential=0).");
+        }
+
+        public static void DisableLLMNR()
+        {
+            ApplyRegistrySettings(GetLLMNRSettings());
+            Logger.Write("INFO", "Resolução de nomes multicast LLMNR desativada por diretiva (EnableMulticast=0).");
+        }
+
+        public static void DisableAutoRunAndAutoPlay()
+        {
+            ApplyRegistrySettings(GetAutoRunAndAutoPlaySettings());
+            Logger.Write("INFO", "AutoRun e Reprodução Automática desativados para todas as unidades no sistema e no usuário atual.");
+        }
+
+        public static void DisableAnonymousAccess()
+        {
+            ApplyRegistrySettings(GetAnonymousAccessSettings());
+            Logger.Write("INFO", "Acesso anônimo e enumeração de contas SAM restringidos no LSA (RestrictAnonymous=1, RestrictAnonymousSAM=1).");
+        }
+
+        public static void DisableSMBInsecureGuestAuth()
+        {
+            ApplyRegistrySettings(GetSMBInsecureGuestAuthSettings());
+            Logger.Write("INFO", "Logon de convidado inseguro sem senha no cliente SMB desativado (AllowInsecureGuestAuth=0).");
+        }
+
+        public static void DisableRemoteAssistance()
+        {
+            ApplyRegistrySettings(GetRemoteAssistanceSettings());
+            Logger.Write("INFO", "Assistência Remota do Windows desativada (fAllowToGetHelp=0, fAllowFullControl=0).");
+        }
+
+        public static void EnableDefenderPUAProtection()
+        {
+            try
+            {
+                ApplyRegistrySettings(GetDefenderPUAProtectionSettings());
+                Logger.Write("INFO", "Proteção contra aplicativos potencialmente indesejados (PUA) habilitada nas diretivas do Microsoft Defender.");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Logger.Write("AVISO", string.Format("Não foi possível gravar a diretiva de proteção PUA no Microsoft Defender ({0}). Verifique se a Proteção contra Adulterações ou política corporativa bloqueia alterações.", ex.Message));
+            }
+            catch (SecurityException ex)
+            {
+                Logger.Write("AVISO", string.Format("Permissão negada ao configurar proteção PUA no Microsoft Defender ({0}).", ex.Message));
             }
         }
     }

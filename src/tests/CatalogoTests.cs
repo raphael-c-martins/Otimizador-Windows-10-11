@@ -47,7 +47,7 @@ namespace Otimizador.Tests
                 }
             });
 
-            runner.It("cada ajuste usa uma categoria declarada e inclui Security / DisableAdminShares", delegate
+            runner.It("cada ajuste usa uma categoria declarada e inclui todos os ajustes de Cibersegurança (Lote 1)", delegate
             {
                 var catIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (TweakCategory c in embedded.Categories) catIds.Add(c.Id);
@@ -58,11 +58,28 @@ namespace Otimizador.Tests
                     Assert.IsTrue(catIds.Contains(tweak.Category), "Categoria não declarada: " + tweak.Category);
                 }
 
-                TweakItem adminShares = embedded.Tweaks.Find(delegate(TweakItem t) { return t.Id == "DisableAdminShares"; });
-                Assert.IsNotNull(adminShares, "Ajuste 'DisableAdminShares' não encontrado.");
-                Assert.EqualIgnoreCase("Disable-AdminShares", adminShares.Function);
-                Assert.EqualIgnoreCase("Security", adminShares.Category);
-                Assert.IsTrue(adminShares.SelectedByDefault, "DisableAdminShares deve vir marcado por padrão.");
+                var expectedSecurity = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "DisableAdminShares", "Disable-AdminShares" },
+                    { "DisableSMBv1", "Disable-SMBv1" },
+                    { "DisableWDigest", "Disable-WDigest" },
+                    { "DisableLLMNR", "Disable-LLMNR" },
+                    { "DisableAutoRunAndAutoPlay", "Disable-AutoRunAndAutoPlay" },
+                    { "DisableAnonymousAccess", "Disable-AnonymousAccess" },
+                    { "DisableSMBInsecureGuestAuth", "Disable-SMBInsecureGuestAuth" },
+                    { "DisableRemoteAssistance", "Disable-RemoteAssistance" },
+                    { "EnableDefenderPUAProtection", "Enable-DefenderPUAProtection" }
+                };
+
+                foreach (KeyValuePair<string, string> pair in expectedSecurity)
+                {
+                    string expectedId = pair.Key;
+                    TweakItem item = embedded.Tweaks.Find(delegate(TweakItem t) { return t.Id == expectedId; });
+                    Assert.IsNotNull(item, string.Format("Ajuste de segurança '{0}' não encontrado.", expectedId));
+                    Assert.EqualIgnoreCase(pair.Value, item.Function);
+                    Assert.EqualIgnoreCase("Security", item.Category);
+                    Assert.IsTrue(item.SelectedByDefault, string.Format("'{0}' deve vir marcado por padrão.", expectedId));
+                }
             });
 
             runner.It("RequiresTweaks dos aplicativos referencia ajustes existentes", delegate
@@ -121,8 +138,23 @@ namespace Otimizador.Tests
                         }
                     }
 
-                    Assert.Contains("DisableAdminShares", pEmb.ApplyTweaks,
-                        string.Format("Perfil '{0}' deve incluir DisableAdminShares.", currentName));
+                    string[] requiredSecurityTweaks = new string[]
+                    {
+                        "DisableAdminShares",
+                        "DisableSMBv1",
+                        "DisableWDigest",
+                        "DisableLLMNR",
+                        "DisableAutoRunAndAutoPlay",
+                        "DisableAnonymousAccess",
+                        "DisableSMBInsecureGuestAuth",
+                        "DisableRemoteAssistance",
+                        "EnableDefenderPUAProtection"
+                    };
+                    foreach (string secId in requiredSecurityTweaks)
+                    {
+                        Assert.Contains(secId, pEmb.ApplyTweaks,
+                            string.Format("Perfil '{0}' deve incluir '{1}'.", currentName, secId));
+                    }
                 });
             }
 

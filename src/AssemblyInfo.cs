@@ -7,5 +7,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("Otimizador de Windows (10 & 11)")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Raphael Martins - MIT License")]
 [assembly: ComVisible(false)]
-[assembly: AssemblyVersion("15.0.0.0")]
-[assembly: AssemblyFileVersion("15.0.0.0")]
+[assembly: AssemblyVersion("15.1.0.0")]
+[assembly: AssemblyFileVersion("15.1.0.0")]
