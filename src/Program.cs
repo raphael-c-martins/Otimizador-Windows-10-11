@@ -519,6 +519,22 @@ namespace Otimizador
                 {
                     BackupManager.InvokeSystemRestorePoint(BackupManager.NewRestorePointDescription(presetLabel));
                 }
+                catch (RestorePointRecentAvailableException recentEx)
+                {
+                    Logger.Write("AVISO", string.Format("Ponto de Restauração recente disponível: {0}", recentEx.Message));
+                    bool continueAnyway = opts.ContinueWithoutRestorePoint;
+                    if (!continueAnyway && interactive)
+                    {
+                        continueAnyway = ConsoleTUI.ReadYesNo(string.Format("Continuar usando o ponto recente '{0}' ({1:dd/MM/yyyy HH:mm})?",
+                            recentEx.RecentPoint.Description, recentEx.RecentPoint.CreationTime));
+                    }
+                    if (!continueAnyway)
+                    {
+                        Logger.Write("AVISO", "Otimização cancelada pelo usuário. Nada foi alterado.");
+                        return ExitCodes.AbortadoSemBackup;
+                    }
+                    Logger.Write("INFO", string.Format("Continuando com o Ponto de Restauração recente '{0}' como salvaguarda.", recentEx.RecentPoint.Description));
+                }
                 catch (Exception ex)
                 {
                     Logger.Write("ERRO", string.Format("Ponto de Restauração não criado: {0}", ex.Message));

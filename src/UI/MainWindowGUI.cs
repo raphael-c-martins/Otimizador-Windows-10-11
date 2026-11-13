@@ -38,6 +38,7 @@ namespace Otimizador.UI
     {
         public bool Success { get; set; }
         public string Message { get; set; }
+        public RestorePointInfo RecentPoint { get; set; }
     }
 
     public static class MainWindowGUI
@@ -554,6 +555,29 @@ namespace Otimizador.UI
                     return;
                 }
 
+                if (rp != null && rp.RecentPoint != null)
+                {
+                    MessageBoxResult recentAnswer = MessageBox.Show(
+                        string.Format("O Windows manteve o Ponto de Restauração recente já existente em vez de criar outro (intervalo mínimo do sistema):\n\n'{0}' (criado em {1:dd/MM/yyyy HH:mm})\n\nDeseja continuar usando esse ponto recente como salvaguarda?",
+                            rp.RecentPoint.Description, rp.RecentPoint.CreationTime),
+                        "Ponto de Restauração Recente Disponível",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
+
+                    if (recentAnswer == MessageBoxResult.Yes)
+                    {
+                        Logger.Write("INFO", string.Format("Continuando com o Ponto de Restauração recente '{0}' ({1:dd/MM/yyyy HH:mm}) como salvaguarda.",
+                            rp.RecentPoint.Description, rp.RecentPoint.CreationTime));
+                        startOptimize();
+                    }
+                    else
+                    {
+                        Logger.Write("INFO", "Otimização cancelada pelo usuário. Nada foi alterado.");
+                        setStatus("Otimização cancelada pelo usuário.");
+                    }
+                    return;
+                }
+
                 string reason = rp != null ? rp.Message : "erro desconhecido";
                 MessageBoxResult answer = MessageBox.Show(
                     string.Format("Não foi possível criar o Ponto de Restauração:\n{0}\n\nDeseja continuar SEM ponto de restauração?", reason),
@@ -629,6 +653,11 @@ namespace Otimizador.UI
                         {
                             BackupManager.InvokeSystemRestorePoint(desc);
                             return new RestorePointTaskResult { Success = true, Message = string.Empty };
+                        }
+                        catch (RestorePointRecentAvailableException recentEx)
+                        {
+                            Logger.Write("AVISO", string.Format("Ponto de Restauração recente disponível: {0}", recentEx.Message));
+                            return new RestorePointTaskResult { Success = false, Message = recentEx.Message, RecentPoint = recentEx.RecentPoint };
                         }
                         catch (Exception ex)
                         {

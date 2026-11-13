@@ -6,6 +6,7 @@ using System.Management;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Microsoft.Win32;
 
 namespace Otimizador.Core
@@ -14,6 +15,17 @@ namespace Otimizador.Core
     {
         public string Description { get; set; }
         public DateTime CreationTime { get; set; }
+    }
+
+    public sealed class RestorePointRecentAvailableException : InvalidOperationException
+    {
+        public RestorePointInfo RecentPoint { get; private set; }
+
+        public RestorePointRecentAvailableException(string message, RestorePointInfo recentPoint)
+            : base(message)
+        {
+            RecentPoint = recentPoint;
+        }
     }
 
     public static class BackupManager
@@ -61,13 +73,18 @@ namespace Otimizador.Core
                 }
             }
 
-            RestorePointInfo match = FindRestorePoint(description, startedAt);
+            RestorePointInfo match = WaitForRestorePoint(description, startedAt);
             if (match == null)
             {
                 RestorePointInfo newest = FindNewestRestorePoint();
                 string sysDriveDiag = (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\").TrimEnd('\\');
                 string diagnostic = CollectRestoreDiagnostics(sysDriveDiag);
-                throw new InvalidOperationException(BuildNotConfirmedMessage(newest, diagnostic));
+                string message = BuildNotConfirmedMessage(newest, diagnostic);
+                if (IsRecentRestorePoint(newest, DateTime.Now, 24))
+                {
+                    throw new RestorePointRecentAvailableException(message, newest);
+                }
+                throw new InvalidOperationException(message);
             }
 
             Logger.Write("OK", string.Format("Ponto de Restauração criado e confirmado: '{0}' ({1:dd/MM/yyyy HH:mm:ss}).", match.Description, match.CreationTime));
@@ -113,15 +130,26 @@ namespace Otimizador.Core
             return foundCreation >= startedAt.AddMinutes(-2);
         }
 
+        public static bool IsRecentRestorePoint(RestorePointInfo rp, DateTime now, int maxAgeHours = 24)
+        {
+            if (rp == null || rp.CreationTime == DateTime.MinValue || maxAgeHours <= 0) return false;
+            TimeSpan age = now - rp.CreationTime;
+            return age <= TimeSpan.FromHours(maxAgeHours) && age >= TimeSpan.FromMinutes(-5);
+        }
+
         public static string BuildNotConfirmedMessage(RestorePointInfo newest, string extraDiagnostic = null)
         {
             string baseMsg = "O Windows aceitou o pedido, mas não registrou um novo Ponto de Restauração.";
+            string message;
             if (newest != null)
             {
-                return string.Format("{0} Provável causa: o Windows ignora pontos novos quando já existe um recente (evento 8216 do System Restore). Ponto mais recente disponível: '{1}' em {2:dd/MM/yyyy HH:mm}.",
+                message = string.Format("{0} Provável causa: o Windows ignora pontos novos quando já existe um recente (evento 8216 do System Restore). Ponto mais recente disponível: '{1}' em {2:dd/MM/yyyy HH:mm}.",
                     baseMsg, newest.Description, newest.CreationTime);
             }
-            string message = baseMsg + " Verifique se a Proteção do Sistema está ativa e se há espaço reservado para pontos de restauração.";
+            else
+            {
+                message = baseMsg + " Verifique se a Proteção do Sistema está ativa e se há espaço reservado para pontos de restauração.";
+            }
             if (!string.IsNullOrWhiteSpace(extraDiagnostic))
             {
                 message = message + " Detalhe do Windows: " + extraDiagnostic.Trim();
@@ -397,6 +425,20 @@ namespace Otimizador.Core
                     }
                 }
             }
+        }
+
+        // O WMI SystemRestore pode levar alguns segundos após CreateRestorePoint retornar 0
+        // até expor o snapshot recém-criado na enumeração.
+        private static RestorePointInfo WaitForRestorePoint(string description, DateTime startedAt)
+        {
+            int[] waitDelaysMs = new int[] { 0, 1500, 2000, 2500, 3000 };
+            foreach (int delayMs in waitDelaysMs)
+            {
+                if (delayMs > 0) Thread.Sleep(delayMs);
+                RestorePointInfo match = FindRestorePoint(description, startedAt);
+                if (match != null) return match;
+            }
+            return null;
         }
 
         private static RestorePointInfo FindRestorePoint(string description, DateTime startedAt)

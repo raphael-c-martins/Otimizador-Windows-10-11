@@ -4,6 +4,16 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 
 ---
 
+## [v15.1.3 - Polling na Confirmação WMI e Tratamento de Ponto Recente Existente] - 2026-11-13
+### Corrigido & Melhorado
+- **Retentativa (`WaitForRestorePoint`) na confirmação via WMI (`BackupManager.cs`):** o provedor WMI `SystemRestore` pode levar alguns segundos após `CreateRestorePoint` retornar `0` para expor o snapshot recém-criado; a verificação agora realiza até 5 leituras progressivas (até 9 s quando necessário) antes de concluir que o ponto não foi gravado.
+- **Distinção e reaproveitamento honesto de Ponto de Restauração recente (`BackupManager.cs`, `MainWindowGUI.cs`, `Program.cs`):**
+  - Coleta de eventos recentes (`SystemRestore`/`VSS`/`SPP`) também quando há ponto prévio, além de `IsRecentRestorePoint` e `RestorePointRecentAvailableException`.
+  - Quando o Windows mantém um ponto recente já existente (`<= 24 h`, como em reexecuções na mesma máquina/VM mesmo com outro usuário), o log registra `AVISO` em vez de `ERRO` e o diálogo pergunta se deseja continuar usando esse ponto recente como salvaguarda em vez de afirmar falsamente que o sistema está sem ponto de restauração.
+- **Testes:** cobertura ampliada em `SegurancaTests.cs` para diagnóstico em ponto recente e janela de 24 h (`IsRecentRestorePoint`), versão atualizada para `15.1.3` e `Otimizador-Windows.exe` recompilado na raiz.
+
+---
+
 ## [v15.1.2 - Correções em VM: Log em Documentos, Shadow Storage VSS e Falsos Erros Appx/OneDrive] - 2026-11-13
 ### Corrigido & Melhorado
 - **Log detalhado acessível em `Documentos\OtimizadorWindows` (`SystemInfo.cs`, `Logger.cs`, `Program.cs`):** além da cópia protegida em `%ProgramData%\OtimizadorWindows\logs`, o log UTF-8 passou a ser espelhado para a pasta `Documentos\OtimizadorWindows` do usuário conectado (com validação contra `ReparsePoint`/junções NTFS), direcionando o botão **Abrir Pasta de Logs** e os avisos finais para esse caminho visível no Explorador.
