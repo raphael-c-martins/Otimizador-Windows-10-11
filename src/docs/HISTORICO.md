@@ -5,6 +5,17 @@
 
 ---
 
+### [2026-11-13] - Polling WMI e Tratamento Honesto de Ponto de Restauração Recente (v15.1.3)
+
+- **Contexto e Motivação:**
+  O teste seguinte na VM (`Otimizacao_VM-TESTES-1_2026-11-13_11-30-35.log`, executado com usuário recém-criado) alcançou `53 OK, 0 com aviso, 0 com erro` e gravou o log diretamente em `Documents\OtimizadorWindows`, mas revelou o motivo real do alerta de Ponto de Restauração: o ponto `'Otimizador_GUI_2026-11-13_10-25-57'` da execução anterior havia sido efetivamente gravado pelo Windows (atraso na indexação WMI logo após `CreateRestorePoint`), e na execução das `11:30` o Windows bloqueou um segundo ponto global na máquina (evento `8216`, pois Pontos de Restauração são por volume, não por usuário), exibindo incorretamente `"continuar SEM ponto de restauração?"`.
+
+- **Decisões Arquiteturais e Soluções Técnicas:**
+  1. **`WaitForRestorePoint` em `BackupManager.cs`:** em vez de consultar a classe WMI `root\default:SystemRestore` apenas uma vez imediatamente após `CreateRestorePoint`, o motor faz até 5 leituras com intervalos crescentes (`0`, `1,5 s`, `2 s`, `2,5 s`, `3 s`), eliminando falsos negativos por latência de atualização WMI.
+  2. **Detecção e diálogo específicos para ponto recente (`RestorePointRecentAvailableException`, `MainWindowGUI.cs`, `Program.cs`):** se após o polling o Windows realmente mantiver o ponto criado nas últimas 24 h, o programa registra `AVISO` (não `ERRO`), exibe os eventos reais coletados do Windows e informa qual ponto recente será aproveitado como salvaguarda.
+
+---
+
 ### [2026-11-13] - Confiabilidade em VM: Log Acessível em Documentos, Alocação VSS e Falsos Erros Appx/OneDrive (v15.1.2)
 
 - **Contexto e Motivação:**

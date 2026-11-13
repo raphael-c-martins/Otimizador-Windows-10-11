@@ -338,6 +338,19 @@ namespace Otimizador.Tests
                 string withoutPoints = BackupManager.BuildNotConfirmedMessage(null);
                 Assert.IsTrue(withoutPoints.Contains("Proteção do Sistema"));
 
+                string withRecentDiag = BackupManager.BuildNotConfirmedMessage(new RestorePointInfo
+                {
+                    Description = "Windows Update",
+                    CreationTime = new DateTime(2026, 11, 13, 9, 30, 0)
+                }, "Evento 8216 (SystemRestore): ponto recente ignorado");
+                Assert.IsTrue(withRecentDiag.Contains("Detalhe do Windows: Evento 8216"));
+
+                DateTime refNow = new DateTime(2026, 11, 13, 12, 0, 0);
+                Assert.IsTrue(BackupManager.IsRecentRestorePoint(new RestorePointInfo { Description = "P1", CreationTime = refNow.AddHours(-2) }, refNow, 24));
+                Assert.IsFalse(BackupManager.IsRecentRestorePoint(new RestorePointInfo { Description = "P2", CreationTime = refNow.AddHours(-30) }, refNow, 24));
+                Assert.IsFalse(BackupManager.IsRecentRestorePoint(new RestorePointInfo { Description = "P3", CreationTime = DateTime.MinValue }, refNow, 24));
+                Assert.IsFalse(BackupManager.IsRecentRestorePoint(null, refNow, 24));
+
                 Assert.IsTrue(BackupManager.DescribeSystemRestoreReturnCode(1058).Contains("1058"));
                 Assert.IsTrue(BackupManager.DescribeSystemRestoreReturnCode(112).Contains("112"));
                 Assert.IsTrue(BackupManager.DescribeSystemRestoreReturnCode(999).Contains("0x000003E7"));
