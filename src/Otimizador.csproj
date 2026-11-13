@@ -62,6 +62,10 @@
       <HintPath>$(SystemRoot)\System32\WinMetadata\Windows.ApplicationModel.winmd</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Windows.Storage">
+      <HintPath>$(SystemRoot)\System32\WinMetadata\Windows.Storage.winmd</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

@@ -112,6 +112,15 @@ namespace Otimizador.Tests
                 Assert.IsFalse(AppManager.IsPackageMatch("MSTeams", "MicrosoftTeams"));
             });
 
+            runner.It("o app People usa Microsoft.People sem atingir Microsoft.Windows.PeopleExperienceHost", delegate
+            {
+                AppItem people = embedded.Apps.Find(delegate(AppItem a) { return a.Id == "People"; });
+                Assert.IsNotNull(people);
+                Assert.Equal("Microsoft.People", people.PackageName);
+                Assert.IsTrue(AppManager.IsPackageMatch("Microsoft.People", people.PackageName));
+                Assert.IsFalse(AppManager.IsPackageMatch("Microsoft.Windows.PeopleExperienceHost", people.PackageName));
+            });
+
             runner.Describe("Perfis (src/Config/Presets)");
 
             string[] presetNames = OptimizationEngine.GetPresetNames(repoRoot);

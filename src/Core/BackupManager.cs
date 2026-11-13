@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.Management;
 using System.ServiceProcess;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace Otimizador.Core
@@ -43,6 +46,7 @@ namespace Otimizador.Core
             {
                 string sysDrive = (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\").TrimEnd('\\') + "\\";
                 EnableSystemProtection(sysDrive);
+                EnsureShadowStorageAllocated(sysDrive);
                 CreateRestorePointWithFrequencyBypass(description);
             }
             finally
@@ -61,7 +65,9 @@ namespace Otimizador.Core
             if (match == null)
             {
                 RestorePointInfo newest = FindNewestRestorePoint();
-                throw new InvalidOperationException(BuildNotConfirmedMessage(newest));
+                string sysDriveDiag = (Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\").TrimEnd('\\');
+                string diagnostic = CollectRestoreDiagnostics(sysDriveDiag);
+                throw new InvalidOperationException(BuildNotConfirmedMessage(newest, diagnostic));
             }
 
             Logger.Write("OK", string.Format("Ponto de Restauração criado e confirmado: '{0}' ({1:dd/MM/yyyy HH:mm:ss}).", match.Description, match.CreationTime));
@@ -107,7 +113,7 @@ namespace Otimizador.Core
             return foundCreation >= startedAt.AddMinutes(-2);
         }
 
-        public static string BuildNotConfirmedMessage(RestorePointInfo newest)
+        public static string BuildNotConfirmedMessage(RestorePointInfo newest, string extraDiagnostic = null)
         {
             string baseMsg = "O Windows aceitou o pedido, mas não registrou um novo Ponto de Restauração.";
             if (newest != null)
@@ -115,7 +121,141 @@ namespace Otimizador.Core
                 return string.Format("{0} Provável causa: o Windows ignora pontos novos quando já existe um recente (evento 8216 do System Restore). Ponto mais recente disponível: '{1}' em {2:dd/MM/yyyy HH:mm}.",
                     baseMsg, newest.Description, newest.CreationTime);
             }
-            return baseMsg + " Verifique se a Proteção do Sistema está ativa e se há espaço reservado para pontos de restauração.";
+            string message = baseMsg + " Verifique se a Proteção do Sistema está ativa e se há espaço reservado para pontos de restauração.";
+            if (!string.IsNullOrWhiteSpace(extraDiagnostic))
+            {
+                message = message + " Detalhe do Windows: " + extraDiagnostic.Trim();
+            }
+            return message;
+        }
+
+        public static bool NeedsShadowStorageSetup(string vssOutput)
+        {
+            if (string.IsNullOrWhiteSpace(vssOutput)) return true;
+
+            var metricValues = new List<string>();
+            string maxCandidate = null;
+            string[] lines = vssOutput.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string rawLine in lines)
+            {
+                int colonIndex = rawLine.IndexOf(':');
+                if (colonIndex <= 0 || colonIndex >= rawLine.Length - 1) continue;
+
+                string label = rawLine.Substring(0, colonIndex).Trim();
+                string value = rawLine.Substring(colonIndex + 1).Trim();
+                bool isMetricValue =
+                    value.IndexOf("UNBOUNDED", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    value.IndexOf("ILIMITADO", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    value.IndexOf("SEM LIMITE", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (char.IsDigit(value[0]) && Regex.IsMatch(value, @"(?:bytes?|kb|mb|gb|tb|%)", RegexOptions.IgnoreCase));
+                if (!isMetricValue) continue;
+
+                metricValues.Add(value);
+                if (label.IndexOf("Máximo", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    label.IndexOf("Maximo", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    label.IndexOf("Maximum", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    maxCandidate = value;
+                }
+            }
+
+            if (metricValues.Count == 0) return true;
+            if (string.IsNullOrWhiteSpace(maxCandidate))
+            {
+                maxCandidate = metricValues[metricValues.Count - 1];
+            }
+
+            if (maxCandidate.IndexOf("UNBOUNDED", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                maxCandidate.IndexOf("ILIMITADO", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                maxCandidate.IndexOf("SEM LIMITE", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return false;
+            }
+
+            return Regex.IsMatch(maxCandidate, @"^0+(?:[.,]0+)?\s*(?:bytes?|b|kb|mb|gb|tb)?(?:\s*\(\s*0+\s*%\s*\))?$", RegexOptions.IgnoreCase);
+        }
+
+        private static void EnsureShadowStorageAllocated(string sysDrive)
+        {
+            string driveArg = (sysDrive ?? "C:\\").TrimEnd('\\');
+            if (!Regex.IsMatch(driveArg, @"^[A-Za-z]:$")) return;
+
+            try
+            {
+                string vssadminExe = SystemInfo.ResolveSystemExecutable("vssadmin.exe");
+                var listRes = SystemInfo.RunProcess(vssadminExe, string.Format("list shadowstorage /for={0}", driveArg), 15000);
+                string combined = (listRes.StdOut ?? string.Empty) + "\n" + (listRes.StdErr ?? string.Empty);
+                if (!NeedsShadowStorageSetup(combined)) return;
+
+                Logger.Write("INFO", string.Format("Armazenamento de Cópias de Sombra (VSS) não alocado ou zerado em {0}. Reservando 5%...", driveArg));
+                var addRes = SystemInfo.RunProcess(vssadminExe, string.Format("add shadowstorage /for={0} /on={0} /maxsize=5%", driveArg), 20000);
+                if (addRes.ExitCode == 0)
+                {
+                    Logger.Write("INFO", string.Format("Espaço de restauração (5%) configurado em {0}.", driveArg));
+                    return;
+                }
+
+                var resizeRes = SystemInfo.RunProcess(vssadminExe, string.Format("resize shadowstorage /for={0} /on={0} /maxsize=5%", driveArg), 20000);
+                if (resizeRes.ExitCode == 0)
+                {
+                    Logger.Write("INFO", string.Format("Espaço de restauração ajustado para 5% em {0}.", driveArg));
+                    return;
+                }
+
+                Logger.Write("AVISO", string.Format("vssadmin não conseguiu alocar espaço em {0} (add={1}, resize={2}).", driveArg, addRes.ExitCode, resizeRes.ExitCode));
+            }
+            catch (Exception ex)
+            {
+                Logger.Write("AVISO", string.Format("Falha ao verificar/ajustar armazenamento VSS em {0}: {1}", driveArg, ex.Message));
+            }
+        }
+
+        private static string CollectRestoreDiagnostics(string driveArg)
+        {
+            var parts = new List<string>();
+            try
+            {
+                string vssadminExe = SystemInfo.ResolveSystemExecutable("vssadmin.exe");
+                var listRes = SystemInfo.RunProcess(vssadminExe, string.Format("list shadowstorage /for={0}", driveArg), 10000);
+                string combined = (listRes.StdOut ?? string.Empty) + "\n" + (listRes.StdErr ?? string.Empty);
+                if (NeedsShadowStorageSetup(combined))
+                {
+                    parts.Add("armazenamento VSS sem cota disponível em " + driveArg);
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                string queryStr = "*[System[(Provider[@Name='SystemRestore'] or Provider[@Name='VSS'] or Provider[@Name='SPP']) and (Level=1 or Level=2 or Level=3 or EventID=8216) and TimeCreated[timediff(@SystemTime) <= 120000]]]";
+                var query = new EventLogQuery("Application", PathType.LogName, queryStr) { ReverseDirection = true };
+                using (var reader = new EventLogReader(query))
+                {
+                    EventRecord ev;
+                    int count = 0;
+                    while ((ev = reader.ReadEvent()) != null && count < 2)
+                    {
+                        using (ev)
+                        {
+                            string desc = string.Empty;
+                            try { desc = ev.FormatDescription() ?? string.Empty; } catch { }
+                            desc = Regex.Replace(desc, @"\s+", " ").Trim();
+                            if (desc.Length > 160) desc = desc.Substring(0, 157) + "...";
+                            parts.Add(string.IsNullOrWhiteSpace(desc)
+                                ? string.Format("Evento {0} ({1})", ev.Id, ev.ProviderName)
+                                : string.Format("Evento {0} ({1}): {2}", ev.Id, ev.ProviderName, desc));
+                            count++;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return string.Join(" | ", parts.ToArray());
         }
 
         public static string DescribeSystemRestoreReturnCode(uint code)

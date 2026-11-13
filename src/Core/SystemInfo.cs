@@ -212,6 +212,125 @@ namespace Otimizador.Core
             };
         }
 
+        public static bool IsReparsePoint(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            try
+            {
+                if (!Directory.Exists(path) && !File.Exists(path)) return false;
+                return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        public static string GetUserProfilePath(string userSid)
+        {
+            if (string.IsNullOrWhiteSpace(userSid)) return null;
+            try
+            {
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var profileKey = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\" + userSid))
+                {
+                    if (profileKey == null) return null;
+                    string path = Convert.ToString(profileKey.GetValue("ProfileImagePath"));
+                    return string.IsNullOrWhiteSpace(path) ? null : Environment.ExpandEnvironmentVariables(path.Trim());
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static string GetUserDocumentsDirectory(string userSid)
+        {
+            string effectiveSid = string.IsNullOrWhiteSpace(userSid) ? GetInteractiveUserSid() : userSid;
+            string profilePath = GetUserProfilePath(effectiveSid);
+
+            if (!string.IsNullOrWhiteSpace(effectiveSid))
+            {
+                try
+                {
+                    using (var usersKey = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64))
+                    using (var shellKey = usersKey.OpenSubKey(effectiveSid + @"\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"))
+                    {
+                        if (shellKey != null)
+                        {
+                            string raw = Convert.ToString(shellKey.GetValue("Personal", null, RegistryValueOptions.DoNotExpandEnvironmentNames));
+                            if (!string.IsNullOrWhiteSpace(raw))
+                            {
+                                string expanded = raw.Trim();
+                                if (!string.IsNullOrWhiteSpace(profilePath))
+                                {
+                                    int idx = expanded.IndexOf("%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+                                    if (idx >= 0)
+                                    {
+                                        expanded = expanded.Substring(0, idx) + profilePath + expanded.Substring(idx + "%USERPROFILE%".Length);
+                                    }
+                                }
+                                expanded = Environment.ExpandEnvironmentVariables(expanded);
+                                if (expanded.IndexOf('%') < 0 && Directory.Exists(expanded))
+                                {
+                                    return expanded;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(profilePath))
+            {
+                string docsCandidate = Path.Combine(profilePath, "Documents");
+                if (Directory.Exists(docsCandidate)) return docsCandidate;
+            }
+
+            try
+            {
+                string fallback = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                if (!string.IsNullOrWhiteSpace(fallback) && Directory.Exists(fallback)) return fallback;
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        // Resolve <Documentos>\OtimizadorWindows garantindo que nem a pasta Documentos nem o destino
+        // sejam symlinks/junctions (ReparsePoint), impedindo redirecionamento arbitrário sob elevação Admin.
+        public static string ResolveUserDocumentsLogsDirectory(string userSid)
+        {
+            string docsDir = GetUserDocumentsDirectory(userSid);
+            if (string.IsNullOrWhiteSpace(docsDir)) return null;
+
+            try
+            {
+                string fullDocs = Path.GetFullPath(docsDir);
+                if (!Directory.Exists(fullDocs) || IsReparsePoint(fullDocs)) return null;
+
+                string targetDir = Path.Combine(fullDocs, "OtimizadorWindows");
+                if (File.Exists(targetDir)) return null;
+                if (Directory.Exists(targetDir))
+                {
+                    return IsReparsePoint(targetDir) ? null : targetDir;
+                }
+
+                Directory.CreateDirectory(targetDir);
+                return IsReparsePoint(targetDir) ? null : targetDir;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static string ResolveSystemExecutable(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName) || Path.IsPathRooted(fileName))

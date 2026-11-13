@@ -5,6 +5,25 @@
 
 ---
 
+### [2026-11-13] - Confiabilidade em VM: Log Acessível em Documentos, Alocação VSS e Falsos Erros Appx/OneDrive (v15.1.2)
+
+- **Contexto e Motivação:**
+  Testes reais em VM limpa com Windows 11 Pro (`build 26100`) revelaram quatro atritos práticos: (1) o diálogo final exibia o log dentro de `C:\ProgramData\OtimizadorWindows\logs` (pasta oculta por padrão no Explorador); (2) `CreateRestorePoint` retornava sucesso (`0`), mas não registrava ponto de restauração quando o Windows deixava o Shadow Storage (`vssadmin shadowstorage`) sem cota ou zerado; (3) o wildcard `*People*` tentava remover o componente protegido `Microsoft.Windows.PeopleExperienceHost` (`0x80070032`), e o registro provisionado órfão de `DevHome` no Windows 11 24H2 falhava com código DISM `3`; e (4) sob elevação com outra conta administrativa, `RemoveOneDriveDeep` avaliava o registro do usuário antes de `System32\OneDriveSetup.exe`, gerando um aviso espúrio antes de concluir a desinstalação.
+
+- **Decisões Arquiteturais e Soluções Técnicas:**
+  1. **Espelhamento seguro do log para `Documentos\OtimizadorWindows` (`SystemInfo.cs`, `Logger.cs`, `Program.cs`):**
+     - Mantida a integridade da pasta `%ProgramData%\OtimizadorWindows` (estado de Undo e logs com ACL restrita), espelhando o mesmo arquivo `.log` para `Documentos\OtimizadorWindows` do perfil interativo (`ProfileList\<SID>` / `User Shell Folders\Personal`).
+     - Antes de gravar na pasta do usuário a partir do processo elevado, `SystemInfo.ResolveUserDocumentsLogsDirectory` e `Logger.SetAccessibleLogTarget` validam que nenhum segmento é `ReparsePoint` (mitigando redirecionamento via junções NTFS).
+  2. **Alocação preventiva de Shadow Storage VSS e diagnóstico por eventos (`BackupManager.cs`):**
+     - `EnsureShadowStorageAllocated` analisa a saída de `vssadmin list shadowstorage /for=<drive>` via `NeedsShadowStorageSetup` (diferenciando linhas `Usado`/`Alocado` em `0%` da cota `Máximo` e respeitando cotas já definidas ou `ILIMITADO`/`UNBOUNDED`) e configura `5%` quando necessário (`add` com fallback para `resize`).
+     - Em falhas persistentes, `CollectRestoreDiagnostics` consulta eventos recentes de `SystemRestore`, `VSS` e `SPP` via `EventLogReader` e inclui a explicação real no alerta.
+  3. **Proteção de componentes `SystemApps`, stubs órfãos no DISM e prioridade de sistema no OneDrive (`Apps.json`, `AppManager.cs`):**
+     - `People` foi restringido a `Microsoft.People` e `IsProtectedSystemShellPackage` impede tentar remover pacotes residentes em `Windows\SystemApps` ou frameworks.
+     - Em `RemoveProvisionedPackage`, código `3` do `dism.exe` sem pacote instalado correspondente passa a gerar `AVISO` em vez de `ERRO`.
+     - `RemoveOneDriveDeep` checa primeiro binários de sistema (`System32`, `SysWOW64`, `Program Files`) e reconhece a pasta `AppData\Local\Microsoft\OneDrive` do usuário conectado.
+
+---
+
 ### [2026-11-13] - Endurecimento do Ponto de Restauração, Sanitização e Descarte WMI/COM (v15.1)
 
 - **Contexto e Motivação:**
