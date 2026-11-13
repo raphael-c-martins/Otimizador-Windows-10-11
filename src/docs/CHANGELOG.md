@@ -4,6 +4,18 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 
 ---
 
+## [v15.1.2 - Correções em VM: Log em Documentos, Shadow Storage VSS e Falsos Erros Appx/OneDrive] - 2026-11-13
+### Corrigido & Melhorado
+- **Log detalhado acessível em `Documentos\OtimizadorWindows` (`SystemInfo.cs`, `Logger.cs`, `Program.cs`):** além da cópia protegida em `%ProgramData%\OtimizadorWindows\logs`, o log UTF-8 passou a ser espelhado para a pasta `Documentos\OtimizadorWindows` do usuário conectado (com validação contra `ReparsePoint`/junções NTFS), direcionando o botão **Abrir Pasta de Logs** e os avisos finais para esse caminho visível no Explorador.
+- **Alocação automática de Shadow Storage VSS para Ponto de Restauração (`BackupManager.cs`):** após ativar a Proteção do Sistema via WMI, o motor verifica `vssadmin list shadowstorage` e configura `5%` automaticamente (`vssadmin add/resize shadowstorage`) quando a cota está ausente ou em `0 bytes (0%)` (comum em VMs e instalações limpas do Windows 11), adicionando coleta dos eventos recentes de `SystemRestore`/`VSS`/`SPP` caso ainda haja falha.
+- **Remoção de falsos erros em `People`, `DevHome` e aviso de `OneDrive` (`Apps.json`, `AppManager.cs`, `Otimizador.csproj`):**
+  - Narrowing de `People` para `Microsoft.People` (evitando `Microsoft.Windows.PeopleExperienceHost` / erro `0x80070032`) com proteção `IsProtectedSystemShellPackage` ignorando pacotes em `Windows\SystemApps` e frameworks.
+  - Pacotes provisionados órfãos sem arquivos locais (`DISM` código `3` quando não há pacote instalado correspondente, como `Microsoft.Windows.DevHome` no Windows 11 24H2) passam a registrar `AVISO` informativo em vez de `ERRO`.
+  - `RemoveOneDriveDeep` prioriza instaladores somente leitura de sistema (`System32`/`SysWOW64`/`Program Files`) antes da chave do perfil e inclui a pasta do usuário conectado nas raízes confiáveis.
+- **Testes automatizados ampliados de 50 para 53 verificações:** novas validações de regressão em `SegurancaTests.cs` e `CatalogoTests.cs`, atualização de versão interna para `15.1.2` e recompilação do executável raiz `Otimizador-Windows.exe`.
+
+---
+
 ## [v15.1 - Auditoria de Robustez, Sanitização e Descarte WMI/COM] - 2026-11-13
 ### Corrigido & Melhorado
 - **Ponto de Restauração mais confiável (`BackupManager.cs`):** rejeição explícita para Windows Server e política `DisableSR = 1`, liberação temporária de `VSS` e `swprv` com restauração no `finally`, sanitização do rótulo (`<= 32` caracteres para descrição total `<= 63`), proteção ao restaurar `SystemRestorePointCreationFrequency`, tolerância a `CreationTime` ausente na confirmação WMI e diagnóstico claro sobre o evento `8216`.

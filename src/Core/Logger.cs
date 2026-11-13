@@ -12,6 +12,7 @@ namespace Otimizador.Core
         private static readonly UTF8Encoding _utf8Bom = new UTF8Encoding(true);
 
         private static string _logFilePath;
+        private static string _accessibleLogFilePath;
         private static Action<string, string> _logSink;
         private static Action<int, int, string> _progressSink;
         private static int _stepWarningCount;
@@ -125,8 +126,52 @@ namespace Otimizador.Core
             lock (_lock)
             {
                 _logFilePath = filePath;
+                _accessibleLogFilePath = null;
                 _logSink = sink;
                 _progressSink = progressSink;
+            }
+        }
+
+        public static string SetAccessibleLogTarget(string filePath)
+        {
+            lock (_lock)
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    _accessibleLogFilePath = null;
+                    return null;
+                }
+
+                try
+                {
+                    string dir = Path.GetDirectoryName(filePath);
+                    if (string.IsNullOrWhiteSpace(dir)) return null;
+                    if (!Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+                    if (SystemInfo.IsReparsePoint(dir)) return null;
+
+                    string uniquePath = ResolveUniqueFilePath(filePath);
+                    if (SystemInfo.IsReparsePoint(uniquePath)) return null;
+
+                    if (!string.IsNullOrWhiteSpace(_logFilePath) && File.Exists(_logFilePath))
+                    {
+                        string existingContent = File.ReadAllText(_logFilePath, _utf8Bom);
+                        if (!string.IsNullOrEmpty(existingContent))
+                        {
+                            File.WriteAllText(uniquePath, existingContent, _utf8Bom);
+                        }
+                    }
+
+                    _accessibleLogFilePath = uniquePath;
+                    return uniquePath;
+                }
+                catch
+                {
+                    _accessibleLogFilePath = null;
+                    return null;
+                }
             }
         }
 
@@ -138,10 +183,19 @@ namespace Otimizador.Core
             }
         }
 
+        public static string GetDisplayLogFilePath()
+        {
+            lock (_lock)
+            {
+                return !string.IsNullOrWhiteSpace(_accessibleLogFilePath) ? _accessibleLogFilePath : _logFilePath;
+            }
+        }
+
         public static void Write(string level, string message)
         {
             string normalizedLevel = string.IsNullOrWhiteSpace(level) ? "INFO" : level.Trim().ToUpperInvariant();
             string logPath;
+            string accessiblePath;
             Action<string, string> sink;
 
             lock (_lock)
@@ -151,10 +205,11 @@ namespace Otimizador.Core
                     _stepWarningCount++;
                 }
                 logPath = _logFilePath;
+                accessiblePath = _accessibleLogFilePath;
                 sink = _logSink;
             }
 
-            if (!string.IsNullOrWhiteSpace(logPath))
+            if (!string.IsNullOrWhiteSpace(logPath) || !string.IsNullOrWhiteSpace(accessiblePath))
             {
                 string line = string.Format("[{0}] [{1}] {2}{3}",
                     DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -165,7 +220,16 @@ namespace Otimizador.Core
                 {
                     lock (_lock)
                     {
-                        File.AppendAllText(logPath, line, _utf8Bom);
+                        if (!string.IsNullOrWhiteSpace(logPath))
+                        {
+                            File.AppendAllText(logPath, line, _utf8Bom);
+                        }
+                        if (!string.IsNullOrWhiteSpace(accessiblePath) &&
+                            !string.Equals(accessiblePath, logPath, StringComparison.OrdinalIgnoreCase) &&
+                            !SystemInfo.IsReparsePoint(accessiblePath))
+                        {
+                            File.AppendAllText(accessiblePath, line, _utf8Bom);
+                        }
                     }
                 }
                 catch

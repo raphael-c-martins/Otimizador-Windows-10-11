@@ -5,7 +5,7 @@ namespace Otimizador.Core
 {
     public static class Constants
     {
-        public const string OptimizerVersion = "15.1";
+        public const string OptimizerVersion = "15.1.2";
 
         public static string OptimizerDataRoot
         {

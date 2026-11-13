@@ -290,6 +290,8 @@ namespace Otimizador
             UserTargetInfo userTarget;
             ExecutionContext context;
             OptimizerCatalog catalog;
+            string accessibleLogPath = null;
+            string displayLogPath = logPath;
 
             try
             {
@@ -298,6 +300,16 @@ namespace Otimizador
                 userTarget = opts.DryRun
                     ? new UserTargetInfo { Sid = null, Message = "Simulação: nenhum perfil de usuário será alterado.", IsWarning = false }
                     : SystemInfo.ResolveUserRegistrySid();
+
+                string docsLogsDir = SystemInfo.ResolveUserDocumentsLogsDirectory(userTarget.Sid);
+                if (!string.IsNullOrWhiteSpace(docsLogsDir))
+                {
+                    accessibleLogPath = Logger.SetAccessibleLogTarget(Path.Combine(docsLogsDir, Path.GetFileName(logPath)));
+                    if (!string.IsNullOrWhiteSpace(accessibleLogPath))
+                    {
+                        displayLogPath = accessibleLogPath;
+                    }
+                }
 
                 Logger.Write("INFO", string.Format("Otimizador de Windows v{0} | {1} (build {2}) | {3}{4}",
                     Constants.OptimizerVersion,
@@ -347,7 +359,7 @@ namespace Otimizador
 
                 Console.ForegroundColor = undoResult.Failed > 0 ? ConsoleColor.Yellow : ConsoleColor.Green;
                 Console.WriteLine(string.Format("\n Restauração: {0} itens revertidos, {1} com erro. Log: {2}",
-                    undoResult.Restored, undoResult.Failed, logPath));
+                    undoResult.Restored, undoResult.Failed, displayLogPath));
                 Console.ResetColor();
                 if (interactive) ConsoleTUI.PromptInput("\n Pressione ENTER para sair");
                 return undoResult.Failed > 0 ? ExitCodes.FalhasParciais : ExitCodes.Sucesso;
@@ -362,7 +374,7 @@ namespace Otimizador
             {
                 try
                 {
-                    MainWindowGUI.ShowMainWindow(catalog, context, logPath, os.Caption, opts.DryRun);
+                    MainWindowGUI.ShowMainWindow(catalog, context, displayLogPath, os.Caption, opts.DryRun);
                     return ExitCodes.Sucesso;
                 }
                 catch (Exception ex)
@@ -371,6 +383,10 @@ namespace Otimizador
                     EnsureConsole(true);
                     Console.WriteLine("\n [AVISO] Iniciando no modo terminal...\n");
                     Logger.SetTarget(logPath, ConsoleTUI.WriteLogEntry, ConsoleTUI.WriteProgress);
+                    if (!string.IsNullOrWhiteSpace(accessibleLogPath))
+                    {
+                        Logger.SetAccessibleLogTarget(accessibleLogPath);
+                    }
                 }
             }
 
@@ -531,7 +547,7 @@ namespace Otimizador
                 return ExitCodes.ErroDeUso;
             }
 
-            ConsoleTUI.ShowExecutionSummary(execResult, logPath);
+            ConsoleTUI.ShowExecutionSummary(execResult, displayLogPath);
             if (interactive) ConsoleTUI.PromptInput("\n Pressione ENTER para finalizar");
 
             return execResult.Failed > 0 ? ExitCodes.FalhasParciais : ExitCodes.Sucesso;

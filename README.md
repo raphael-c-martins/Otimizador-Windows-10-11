@@ -48,7 +48,7 @@ irm "https://raw.githubusercontent.com/raphael-c-martins/Otimizador-Windows-10-1
   - **Proteção contra ameaças de rede, credenciais e mídias (Lote 1):** desativa o protocolo legado SMBv1 (`SMB1 = 0` + driver `mrxsmb10`), bloqueia senhas em texto claro na memória via WDigest (`UseLogonCredential = 0`), desliga resolução multicast LLMNR (`EnableMulticast = 0`), desativa AutoRun e Reprodução Automática em pendrives/discos, restringe acesso e enumeração anônima no LSA/SAM (`RestrictAnonymous` e `RestrictAnonymousSAM`), bloqueia logon de convidado SMB sem senha (`AllowInsecureGuestAuth = 0`), desativa a Assistência Remota nativa e habilita o bloqueio PUA (aplicativos indesejados) por diretiva do Microsoft Defender.
   > **Atenção:** reiniciar o `LanmanServer` pode interromper brevemente conexões SMB ativas; bloquear logon de convidado SMB sem senha pode impactar NAS/impressoras antigas sem autenticação; e o bloqueio de SMBv1 requer reinicialização do Windows para efeito completo. Tudo pode ser revertido via `-Undo`.
 - **Modo simulação (`-DryRun`):** mostra tudo o que seria feito sem alterar o sistema e sem exigir privilégio de Administrador.
-- **Ponto de restauração confirmado:** verifica via WMI se o Windows realmente criou o ponto. Se falhar, você decide se continua.
+- **Ponto de restauração confirmado:** configura automaticamente o espaço de cópia de sombra (`vssadmin shadowstorage`, `5%`) se estiver zerado ou ausente, verifica via WMI se o Windows realmente criou o ponto e exibe diagnóstico detalhado caso falhe para você decidir se continua.
 - **Undo exato:** grava os valores originais de registro, serviços (incluindo reinício coordenado pós-reversão no `LanmanServer`), tarefas agendadas e energia em diário para restaurar o estado exato anterior.
 - **Respeita notebooks:** mantém a hibernação e não ativa o plano Ultimate Performance em equipamentos com bateria.
 - **Correção de protocolos do Xbox:** neutraliza `ms-gamebar` e `ms-gamingoverlay` ao remover o Game Bar para evitar popups de erro.
@@ -109,7 +109,8 @@ Start-Process -FilePath .\Otimizador-Windows.exe -ArgumentList '-Preset','Corpor
 
 | Pasta | Conteúdo |
 | :--- | :--- |
-| `%ProgramData%\OtimizadorWindows\logs` | Log UTF-8 de cada execução. |
+| `Documentos\OtimizadorWindows` | Cópia acessível do log detalhado da sessão (aberta pelo botão da interface). |
+| `%ProgramData%\OtimizadorWindows\logs` | Cópia técnica protegida dos logs UTF-8 de cada execução. |
 | `%ProgramData%\OtimizadorWindows\estado` | Diários de alteração usados pelo Undo (`estado_*.json`). **Não apague.** |
 | `%ProgramData%\OtimizadorWindows\app` | Cópia do executável baixada pelo `get.ps1`. |
 | `%TEMP%\OtimizadorWindows-simulacao` | Logs do modo simulação (`-DryRun`). |

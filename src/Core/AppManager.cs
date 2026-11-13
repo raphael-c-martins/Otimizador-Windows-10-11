@@ -200,7 +200,7 @@ namespace Otimizador.Core
             return list;
         }
 
-        private static void RemoveProvisionedPackage(PackageManager pm, ProvisionedPackageInfo prov)
+        private static void RemoveProvisionedPackage(PackageManager pm, ProvisionedPackageInfo prov, bool hasInstalledMatch)
         {
             if (prov.FromWinRt && !string.IsNullOrWhiteSpace(prov.FamilyName))
             {
@@ -214,10 +214,35 @@ namespace Otimizador.Core
                 }
             }
 
-            var res = SystemInfo.RunProcess("dism.exe", string.Format("/Online /Remove-ProvisionedAppxPackage /PackageName:\"{0}\" /NoRestart", prov.PackageName), 120000);
+            string dismExe = SystemInfo.ResolveSystemExecutable("dism.exe");
+            var res = SystemInfo.RunProcess(dismExe, string.Format("/Online /Remove-ProvisionedAppxPackage /PackageName:\"{0}\" /NoRestart", prov.PackageName), 120000);
+            if (res.ExitCode == 3 && !hasInstalledMatch)
+            {
+                Logger.Write("AVISO", string.Format("Pacote provisionado '{0}' sem arquivos no disco (registro órfão do Windows, DISM código 3); o aplicativo não está ativo.", prov.DisplayName));
+                return;
+            }
             if (res.ExitCode != 0)
             {
                 throw new InvalidOperationException(string.Format("DISM falhou ao remover '{0}' (código {1}).", prov.PackageName, res.ExitCode));
+            }
+        }
+
+        private static bool IsProtectedSystemShellPackage(Package pkg)
+        {
+            if (pkg == null) return false;
+            try
+            {
+                if (pkg.IsFramework) return true;
+                string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+                if (string.IsNullOrWhiteSpace(winDir) || pkg.InstalledLocation == null) return false;
+                string installedPath = pkg.InstalledLocation.Path;
+                if (string.IsNullOrWhiteSpace(installedPath)) return false;
+                string systemAppsRoot = Path.Combine(winDir, "SystemApps");
+                return PerformanceManager.TestPathIsWithin(installedPath, systemAppsRoot);
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -228,6 +253,7 @@ namespace Otimizador.Core
             var pm = new PackageManager();
             var errors = new List<string>();
             int found = 0;
+            int installedFound = 0;
             var removedInstalled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var removedProvisioned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -240,9 +266,15 @@ namespace Otimizador.Core
                 foreach (Package pkg in cache.Installed)
                 {
                     if (!IsPackageMatch(pkg.Id.Name, wildPattern)) continue;
+                    if (IsProtectedSystemShellPackage(pkg))
+                    {
+                        Logger.Write("INFO", string.Format("Componente protegido do sistema preservado ({0}).", pkg.Id.Name));
+                        continue;
+                    }
                     if (!removedInstalled.Add(pkg.Id.FullName)) continue;
 
                     found++;
+                    installedFound++;
                     try
                     {
                         WaitWinRtOp(pm.RemovePackageAsync(pkg.Id.FullName, RemovalOptions.RemoveForAllUsers));
@@ -268,7 +300,7 @@ namespace Otimizador.Core
                     found++;
                     try
                     {
-                        RemoveProvisionedPackage(pm, prov);
+                        RemoveProvisionedPackage(pm, prov, installedFound > 0);
                     }
                     catch (Exception ex)
                     {
@@ -338,9 +370,11 @@ namespace Otimizador.Core
             string pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
             string pf86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            string interactiveProfile = SystemInfo.GetUserProfilePath(SystemInfo.GetInteractiveUserSid());
 
             var roots = new List<string>();
             if (!string.IsNullOrWhiteSpace(localAppData)) roots.Add(Path.Combine(localAppData, @"Microsoft\OneDrive"));
+            if (!string.IsNullOrWhiteSpace(interactiveProfile)) roots.Add(Path.Combine(interactiveProfile, @"AppData\Local\Microsoft\OneDrive"));
             if (!string.IsNullOrWhiteSpace(pf)) roots.Add(Path.Combine(pf, @"Microsoft OneDrive"));
             if (!string.IsNullOrWhiteSpace(pf86)) roots.Add(Path.Combine(pf86, @"Microsoft OneDrive"));
             if (!string.IsNullOrWhiteSpace(winDir))
@@ -392,59 +426,63 @@ namespace Otimizador.Core
 
             string setup = null;
             string arguments = "/uninstall";
-            string[] trustedRoots = GetTrustedOneDriveRoots();
 
-            RegistryLocation loc = ChangeJournal.ConvertToRegistryLocation(@"HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\OneDriveSetup.exe");
-            using (RegistryKey baseKey = ChangeJournal.OpenBaseRegistryKey(loc.Hive))
-            using (RegistryKey key = baseKey.OpenSubKey(loc.SubKey))
+            string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            string pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string pf86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            string[] systemCandidates = new string[]
             {
-                if (key != null)
-                {
-                    string unStr = Convert.ToString(key.GetValue("UninstallString")) ?? string.Empty;
-                    string candidate = null;
-                    string candidateArgs = "/uninstall";
-                    Match quoted = Regex.Match(unStr, "^\\s*\"([^\"]+)\"\\s*(.*)$");
-                    if (quoted.Success)
-                    {
-                        candidate = quoted.Groups[1].Value;
-                        candidateArgs = quoted.Groups[2].Value;
-                    }
-                    else
-                    {
-                        Match plain = Regex.Match(unStr, @"^\s*(\S+)\s*(.*)$");
-                        if (plain.Success)
-                        {
-                            candidate = plain.Groups[1].Value;
-                            candidateArgs = plain.Groups[2].Value;
-                        }
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(candidate))
-                    {
-                        if (IsTrustedUninstallExecutable(candidate, "OneDriveSetup.exe", trustedRoots))
-                        {
-                            setup = candidate;
-                            arguments = string.IsNullOrWhiteSpace(candidateArgs) ? "/uninstall" : candidateArgs;
-                        }
-                        else
-                        {
-                            Logger.Write("AVISO", string.Format("Caminho não confiável ignorado no registro do OneDrive: '{0}'.", candidate));
-                        }
-                    }
-                }
+                string.IsNullOrWhiteSpace(winDir) ? null : Path.Combine(winDir, @"System32\OneDriveSetup.exe"),
+                string.IsNullOrWhiteSpace(winDir) ? null : Path.Combine(winDir, @"SysWOW64\OneDriveSetup.exe"),
+                string.IsNullOrWhiteSpace(pf) ? null : Path.Combine(pf, @"Microsoft OneDrive\OneDriveSetup.exe"),
+                string.IsNullOrWhiteSpace(pf86) ? null : Path.Combine(pf86, @"Microsoft OneDrive\OneDriveSetup.exe")
+            };
+            foreach (string c in systemCandidates)
+            {
+                if (!string.IsNullOrWhiteSpace(c) && File.Exists(c)) { setup = c; break; }
             }
 
             if (string.IsNullOrWhiteSpace(setup))
             {
-                string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-                string[] candidates = new string[]
+                string[] trustedRoots = GetTrustedOneDriveRoots();
+                RegistryLocation loc = ChangeJournal.ConvertToRegistryLocation(@"HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\OneDriveSetup.exe");
+                using (RegistryKey baseKey = ChangeJournal.OpenBaseRegistryKey(loc.Hive))
+                using (RegistryKey key = baseKey.OpenSubKey(loc.SubKey))
                 {
-                    Path.Combine(winDir, @"System32\OneDriveSetup.exe"),
-                    Path.Combine(winDir, @"SysWOW64\OneDriveSetup.exe")
-                };
-                foreach (string c in candidates)
-                {
-                    if (File.Exists(c)) { setup = c; break; }
+                    if (key != null)
+                    {
+                        string unStr = Convert.ToString(key.GetValue("UninstallString")) ?? string.Empty;
+                        string candidate = null;
+                        string candidateArgs = "/uninstall";
+                        Match quoted = Regex.Match(unStr, "^\\s*\"([^\"]+)\"\\s*(.*)$");
+                        if (quoted.Success)
+                        {
+                            candidate = quoted.Groups[1].Value;
+                            candidateArgs = quoted.Groups[2].Value;
+                        }
+                        else
+                        {
+                            Match plain = Regex.Match(unStr, @"^\s*(\S+)\s*(.*)$");
+                            if (plain.Success)
+                            {
+                                candidate = plain.Groups[1].Value;
+                                candidateArgs = plain.Groups[2].Value;
+                            }
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(candidate))
+                        {
+                            if (IsTrustedUninstallExecutable(candidate, "OneDriveSetup.exe", trustedRoots))
+                            {
+                                setup = candidate;
+                                arguments = string.IsNullOrWhiteSpace(candidateArgs) ? "/uninstall" : candidateArgs;
+                            }
+                            else
+                            {
+                                Logger.Write("AVISO", string.Format("Caminho não confiável ignorado no registro do OneDrive: '{0}'.", candidate));
+                            }
+                        }
+                    }
                 }
             }
 

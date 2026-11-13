@@ -225,7 +225,7 @@
     {
       "Id": "People",
       "FriendlyName": "Pessoas (Microsoft People)",
-      "PackageName": "*People*",
+      "PackageName": "Microsoft.People",
       "WinGetId": "",
       "Category": "Utilities",
       "Description": "Lista de contatos integrada do Windows.",

@@ -411,6 +411,83 @@ namespace Otimizador.Tests
                     TestHelpers.DeleteDirectorySafe(tmpDir);
                 }
             });
+
+            runner.It("identifica quando o armazenamento VSS (shadowstorage) precisa ser configurado ou redimensionado", delegate
+            {
+                Assert.IsTrue(BackupManager.NeedsShadowStorageSetup(null));
+                Assert.IsTrue(BackupManager.NeedsShadowStorageSetup("Nenhum item encontrado que atenda à consulta."));
+                Assert.IsTrue(BackupManager.NeedsShadowStorageSetup("No items found that satisfy the query."));
+
+                string zeroMaxPt = string.Join("\r\n", new string[]
+                {
+                    "Para o volume: (C:)\\\\?\\Volume{abc}\\",
+                    "Volume de Armazenamento de Cópias de Sombra: (C:)\\\\?\\Volume{abc}\\",
+                    "  Espaço Usado de Armazenamento de Cópias de Sombra: 0 bytes (0%)",
+                    "  Espaço Alocado de Armazenamento de Cópias de Sombra: 0 bytes (0%)",
+                    "  Espaço Máximo de Armazenamento de Cópias de Sombra: 0 bytes (0%)"
+                });
+                Assert.IsTrue(BackupManager.NeedsShadowStorageSetup(zeroMaxPt));
+
+                string validPt = string.Join("\r\n", new string[]
+                {
+                    "Para o volume: (C:)\\\\?\\Volume{abc}\\",
+                    "Volume de Armazenamento de Cópias de Sombra: (C:)\\\\?\\Volume{abc}\\",
+                    "  Espaço Usado de Armazenamento de Cópias de Sombra: 0 bytes (0%)",
+                    "  Espaço Alocado de Armazenamento de Cópias de Sombra: 0 bytes (0%)",
+                    "  Espaço Máximo de Armazenamento de Cópias de Sombra: 4,77 GB (5%)"
+                });
+                Assert.IsFalse(BackupManager.NeedsShadowStorageSetup(validPt));
+
+                string validEnUnbounded = string.Join("\r\n", new string[]
+                {
+                    "For volume: (C:)\\\\?\\Volume{abc}\\",
+                    "Shadow Copy Storage volume: (C:)\\\\?\\Volume{abc}\\",
+                    "  Used Shadow Copy Storage space: 0 bytes (0%)",
+                    "  Allocated Shadow Copy Storage space: 0 bytes (0%)",
+                    "  Maximum Shadow Copy Storage space: UNBOUNDED"
+                });
+                Assert.IsFalse(BackupManager.NeedsShadowStorageSetup(validEnUnbounded));
+
+                string msgWithDiag = BackupManager.BuildNotConfirmedMessage(null, "Evento 8193 (VSS): erro ao criar cópia");
+                Assert.IsTrue(msgWithDiag.Contains("Detalhe do Windows: Evento 8193 (VSS)"));
+                string msgBase = BackupManager.BuildNotConfirmedMessage(null);
+                Assert.IsFalse(msgBase.Contains("Detalhe do Windows:"));
+            });
+
+            runner.It("espelha o log da sessão para caminho acessível sem perder linhas iniciais", delegate
+            {
+                string tmpRoot = TestHelpers.NewTempDirectory("OtimizadorLogMirrorTest");
+                try
+                {
+                    string primary = Path.Combine(tmpRoot, @"ProgramData\logs\Otimizacao_TESTE.log");
+                    string mirror = Path.Combine(tmpRoot, @"Documentos\OtimizadorWindows\Otimizacao_TESTE.log");
+                    Directory.CreateDirectory(Path.GetDirectoryName(primary));
+
+                    Logger.SetTarget(primary, null, null);
+                    Logger.Write("INFO", "Linha inicial antes do espelho");
+
+                    string attached = Logger.SetAccessibleLogTarget(mirror);
+                    Assert.Equal(mirror, attached);
+                    Assert.Equal(mirror, Logger.GetDisplayLogFilePath());
+
+                    Logger.Write("OK", "Linha depois do espelho");
+
+                    string primaryContent = File.ReadAllText(primary);
+                    string mirrorContent = File.ReadAllText(mirror);
+                    Assert.IsTrue(primaryContent.Contains("Linha inicial antes do espelho"));
+                    Assert.IsTrue(primaryContent.Contains("Linha depois do espelho"));
+                    Assert.IsTrue(mirrorContent.Contains("Linha inicial antes do espelho"));
+                    Assert.IsTrue(mirrorContent.Contains("Linha depois do espelho"));
+
+                    Logger.SetTarget(null, null, null);
+                    Assert.IsNull(Logger.GetDisplayLogFilePath());
+                }
+                finally
+                {
+                    Logger.SetTarget(null, null, null);
+                    TestHelpers.DeleteDirectorySafe(tmpRoot);
+                }
+            });
         }
     }
 }
