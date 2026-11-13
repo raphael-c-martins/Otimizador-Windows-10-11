@@ -4,6 +4,16 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 
 ---
 
+## [v15.1 - Auditoria de Robustez, Sanitização e Descarte WMI/COM] - 2026-11-13
+### Corrigido & Melhorado
+- **Ponto de Restauração mais confiável (`BackupManager.cs`):** rejeição explícita para Windows Server e política `DisableSR = 1`, liberação temporária de `VSS` e `swprv` com restauração no `finally`, sanitização do rótulo (`<= 32` caracteres para descrição total `<= 63`), proteção ao restaurar `SystemRestorePointCreationFrequency`, tolerância a `CreationTime` ausente na confirmação WMI e diagnóstico claro sobre o evento `8216`.
+- **Segurança na resolução de executáveis e desinstaladores (`SystemInfo.cs`, `AppManager.cs`, `PerformanceManager.cs`, `MainWindowGUI.cs`):** resolução explícita para `System32`/`Windows` e `WindowsApps\winget.exe`, validação de `WinGetId` (`IsValidWinGetPackageId`) e validação de caminho/nome confiáveis para `OneDriveSetup.exe` e `setup.exe` do Edge (`IsTrustedUninstallExecutable`).
+- **Limpeza e permissões mais resilientes (`PerformanceManager.cs`, `Logger.cs`, `UndoManager.cs`):** isolamento por arquivo em `DeleteDirectoryContentsSafely` para continuar limpando itens livres mesmo com arquivo em uso; travessia ACL em `Logger` ignorando `ReparsePoint`; nomes únicos ao arquivar `.restaurado.json` no Undo.
+- **Liberação determinística WMI/COM (`AUD-05` em `ChangeJournal.cs`, `SecurityManager.cs`, `SystemInfo.cs`, `BackupManager.cs`):** blocos `using` para objetos/coleções WMI e `Marshal.FinalReleaseComObject` para objetos COM de `Schedule.Service`, diferenciando tarefa inexistente de erros reais e registrando aviso se um serviço não reiniciar no Undo.
+- **Testes automatizados ampliados de 44 para 50 verificações:** novos testes de regressão em `SegurancaTests.cs` e `LimpezaTests.cs` e `Otimizador-Windows.exe` na raiz recompilado.
+
+---
+
 ## [v15.1 - Lote 1 de Cibersegurança e Hardening] - 2026-11-12
 ### Adicionado
 - **8 novos ajustes de Cibersegurança (Lote 1) em `SecurityManager.cs`, `Tweaks.json` e nos 4 perfis (`Padrao`, `Gamer`, `Corporativo`, `Extremo`):**

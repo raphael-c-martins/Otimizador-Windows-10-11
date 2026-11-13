@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Management;
+using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -318,11 +319,15 @@ namespace Otimizador.Core
                 using (var svcObj = new ManagementObject(wmiPath))
                 {
                     svcObj.Get();
-                    ManagementBaseObject inParams = svcObj.GetMethodParameters("ChangeStartMode");
-                    inParams["StartMode"] = startupType;
-                    ManagementBaseObject outParams = svcObj.InvokeMethod("ChangeStartMode", inParams, null);
-                    uint code = outParams != null ? Convert.ToUInt32(outParams["ReturnValue"]) : 1;
-                    if (code == 0) return;
+                    using (ManagementBaseObject inParams = svcObj.GetMethodParameters("ChangeStartMode"))
+                    {
+                        inParams["StartMode"] = startupType;
+                        using (ManagementBaseObject outParams = svcObj.InvokeMethod("ChangeStartMode", inParams, null))
+                        {
+                            uint code = outParams != null ? Convert.ToUInt32(outParams["ReturnValue"]) : 1;
+                            if (code == 0) return;
+                        }
+                    }
                 }
             }
             catch
@@ -415,6 +420,26 @@ namespace Otimizador.Core
             return taskPath.TrimEnd('\\');
         }
 
+        private static void ReleaseComObject(object comObj)
+        {
+            if (comObj != null && Marshal.IsComObject(comObj))
+            {
+                try { Marshal.FinalReleaseComObject(comObj); } catch { }
+            }
+        }
+
+        private static bool IsTaskMissingException(Exception ex)
+        {
+            if (ex is FileNotFoundException || ex is DirectoryNotFoundException) return true;
+            var comEx = ex as COMException;
+            if (comEx != null)
+            {
+                uint hr = unchecked((uint)comEx.ErrorCode);
+                return hr == 0x80070002 || hr == 0x80070003;
+            }
+            return false;
+        }
+
         public static void DisableScheduledTaskTracked(string fullName)
         {
             int lastSlash = fullName.LastIndexOf('\\');
@@ -422,45 +447,62 @@ namespace Otimizador.Core
             string taskName = fullName.Substring(lastSlash + 1);
 
             dynamic scheduler = null;
+            dynamic folder = null;
             dynamic task = null;
             try
             {
-                Type schedType = Type.GetTypeFromProgID("Schedule.Service");
-                scheduler = Activator.CreateInstance(schedType);
-                scheduler.Connect();
-                dynamic folder = scheduler.GetFolder(NormalizeComFolderPath(taskPath));
-                task = folder.GetTask(taskName);
-            }
-            catch
-            {
-                Logger.Write("INFO", string.Format("Tarefa '{0}' não existe neste sistema (nada a fazer).", fullName));
-                return;
-            }
+                try
+                {
+                    Type schedType = Type.GetTypeFromProgID("Schedule.Service");
+                    scheduler = Activator.CreateInstance(schedType);
+                    scheduler.Connect();
+                    folder = scheduler.GetFolder(NormalizeComFolderPath(taskPath));
+                    task = folder.GetTask(taskName);
+                }
+                catch (Exception ex)
+                {
+                    if (IsTaskMissingException(ex))
+                    {
+                        Logger.Write("INFO", string.Format("Tarefa '{0}' não existe neste sistema (nada a fazer).", fullName));
+                    }
+                    else
+                    {
+                        Logger.Write("AVISO", string.Format("Não foi possível consultar a tarefa '{0}' ({1}).", fullName, ex.Message));
+                    }
+                    return;
+                }
 
-            if (task == null)
-            {
-                Logger.Write("INFO", string.Format("Tarefa '{0}' não existe neste sistema (nada a fazer).", fullName));
-                return;
+                if (task == null)
+                {
+                    Logger.Write("INFO", string.Format("Tarefa '{0}' não existe neste sistema (nada a fazer).", fullName));
+                    return;
+                }
+
+                bool wasEnabled = false;
+                try { wasEnabled = (bool)task.Enabled; } catch { }
+
+                AddEntry(string.Format("T|{0}", fullName), new JournalEntry
+                {
+                    Kind = "Task",
+                    TaskPath = taskPath,
+                    TaskName = taskName,
+                    WasEnabled = wasEnabled
+                });
+
+                try
+                {
+                    task.Enabled = false;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Write("AVISO", string.Format("Tarefa '{0}' não pôde ser desativada ({1}).", fullName, ex.Message));
+                }
             }
-
-            bool wasEnabled = false;
-            try { wasEnabled = (bool)task.Enabled; } catch { }
-
-            AddEntry(string.Format("T|{0}", fullName), new JournalEntry
+            finally
             {
-                Kind = "Task",
-                TaskPath = taskPath,
-                TaskName = taskName,
-                WasEnabled = wasEnabled
-            });
-
-            try
-            {
-                task.Enabled = false;
-            }
-            catch (Exception ex)
-            {
-                Logger.Write("AVISO", string.Format("Tarefa '{0}' não pôde ser desativada ({1}).", fullName, ex.Message));
+                ReleaseComObject(task);
+                ReleaseComObject(folder);
+                ReleaseComObject(scheduler);
             }
         }
 
@@ -575,8 +617,9 @@ namespace Otimizador.Core
                                 }
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            Logger.Write("AVISO", string.Format("Serviço '{0}' teve o tipo de inicialização restaurado, mas não iniciou automaticamente ({1}).", entry.Name, ex.Message));
                         }
                     }
                     break;
@@ -588,12 +631,24 @@ namespace Otimizador.Core
                 case "Task":
                     if (entry.WasEnabled)
                     {
-                        Type schedType = Type.GetTypeFromProgID("Schedule.Service");
-                        dynamic scheduler = Activator.CreateInstance(schedType);
-                        scheduler.Connect();
-                        dynamic folder = scheduler.GetFolder(NormalizeComFolderPath(entry.TaskPath));
-                        dynamic task = folder.GetTask(entry.TaskName);
-                        task.Enabled = true;
+                        dynamic scheduler = null;
+                        dynamic folder = null;
+                        dynamic task = null;
+                        try
+                        {
+                            Type schedType = Type.GetTypeFromProgID("Schedule.Service");
+                            scheduler = Activator.CreateInstance(schedType);
+                            scheduler.Connect();
+                            folder = scheduler.GetFolder(NormalizeComFolderPath(entry.TaskPath));
+                            task = folder.GetTask(entry.TaskName);
+                            task.Enabled = true;
+                        }
+                        finally
+                        {
+                            ReleaseComObject(task);
+                            ReleaseComObject(folder);
+                            ReleaseComObject(scheduler);
+                        }
                     }
                     break;
 

@@ -114,13 +114,17 @@ namespace Otimizador.Core
             try
             {
                 using (var searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Share"))
+                using (ManagementObjectCollection results = searcher.Get())
                 {
-                    foreach (ManagementObject obj in searcher.Get())
+                    foreach (ManagementObject obj in results)
                     {
-                        var name = obj["Name"] as string;
-                        if (!string.IsNullOrWhiteSpace(name))
+                        using (obj)
                         {
-                            shares.Add(name.Trim());
+                            var name = obj["Name"] as string;
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                shares.Add(name.Trim());
+                            }
                         }
                     }
                 }

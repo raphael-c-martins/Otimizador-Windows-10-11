@@ -104,6 +104,25 @@ namespace Otimizador.Tests
                     Assert.IsFalse(Directory.Exists(nested), "Subpasta deveria ter sido removida.");
                     Assert.IsTrue(File.Exists(targetFile), "Arquivo fora da pasta temporária NUNCA pode ser apagado via junção.");
                 });
+
+                runner.It("continua removendo arquivos livres na mesma subpasta quando há um arquivo bloqueado", delegate
+                {
+                    string temp = Path.Combine(testRoot, "temp-locked");
+                    string sub = Path.Combine(temp, "subpasta");
+                    string unlocked = Path.Combine(sub, "livre.tmp");
+                    string locked = Path.Combine(sub, "travado.tmp");
+                    Directory.CreateDirectory(sub);
+                    File.WriteAllText(unlocked, "ok");
+                    File.WriteAllText(locked, "em-uso");
+
+                    using (var lockHandle = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                    {
+                        PerformanceManager.ClearSystemTempFiles(new string[0], new string[] { temp });
+                    }
+
+                    Assert.IsFalse(File.Exists(unlocked), "Arquivo livre na mesma subpasta deveria ter sido removido.");
+                    Assert.IsTrue(File.Exists(locked), "Arquivo bloqueado permanece até ser liberado.");
+                });
             }
             finally
             {

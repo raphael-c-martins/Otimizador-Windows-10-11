@@ -37,21 +37,25 @@ namespace Otimizador.Core
             try
             {
                 using (var searcher = new ManagementObjectSearcher("SELECT Caption, BuildNumber, ProductType FROM Win32_OperatingSystem"))
+                using (ManagementObjectCollection results = searcher.Get())
                 {
-                    foreach (ManagementObject obj in searcher.Get())
+                    foreach (ManagementObject obj in results)
                     {
-                        if (obj["Caption"] != null) caption = obj["Caption"].ToString().Trim();
-                        if (obj["BuildNumber"] != null)
+                        using (obj)
                         {
-                            int parsedBuild;
-                            if (int.TryParse(obj["BuildNumber"].ToString(), out parsedBuild)) build = parsedBuild;
+                            if (obj["Caption"] != null) caption = obj["Caption"].ToString().Trim();
+                            if (obj["BuildNumber"] != null)
+                            {
+                                int parsedBuild;
+                                if (int.TryParse(obj["BuildNumber"].ToString(), out parsedBuild)) build = parsedBuild;
+                            }
+                            if (obj["ProductType"] != null)
+                            {
+                                int parsedType;
+                                if (int.TryParse(obj["ProductType"].ToString(), out parsedType)) productType = parsedType;
+                            }
+                            break;
                         }
-                        if (obj["ProductType"] != null)
-                        {
-                            int parsedType;
-                            if (int.TryParse(obj["ProductType"].ToString(), out parsedType)) productType = parsedType;
-                        }
-                        break;
                     }
                 }
             }
@@ -74,20 +78,25 @@ namespace Otimizador.Core
             try
             {
                 using (var batSearcher = new ManagementObjectSearcher("SELECT DeviceID FROM Win32_Battery"))
+                using (ManagementObjectCollection batResults = batSearcher.Get())
                 {
-                    if (batSearcher.Get().Count > 0) return true;
+                    if (batResults.Count > 0) return true;
                 }
 
                 var portableChassis = new HashSet<int>(new int[] { 8, 9, 10, 11, 12, 14, 18, 21, 30, 31, 32 });
                 using (var encSearcher = new ManagementObjectSearcher("SELECT ChassisTypes FROM Win32_SystemEnclosure"))
+                using (ManagementObjectCollection encResults = encSearcher.Get())
                 {
-                    foreach (ManagementObject obj in encSearcher.Get())
+                    foreach (ManagementObject obj in encResults)
                     {
-                        var types = obj["ChassisTypes"] as Array;
-                        if (types == null) continue;
-                        foreach (object t in types)
+                        using (obj)
                         {
-                            if (portableChassis.Contains(Convert.ToInt32(t))) return true;
+                            var types = obj["ChassisTypes"] as Array;
+                            if (types == null) continue;
+                            foreach (object t in types)
+                            {
+                                if (portableChassis.Contains(Convert.ToInt32(t))) return true;
+                            }
                         }
                     }
                 }
@@ -103,15 +112,19 @@ namespace Otimizador.Core
             try
             {
                 using (var csSearcher = new ManagementObjectSearcher("SELECT UserName FROM Win32_ComputerSystem"))
+                using (ManagementObjectCollection csResults = csSearcher.Get())
                 {
-                    foreach (ManagementObject obj in csSearcher.Get())
+                    foreach (ManagementObject obj in csResults)
                     {
-                        var userName = obj["UserName"] as string;
-                        if (!string.IsNullOrWhiteSpace(userName))
+                        using (obj)
                         {
-                            var account = new NTAccount(userName);
-                            var sid = (SecurityIdentifier)account.Translate(typeof(SecurityIdentifier));
-                            return sid.Value;
+                            var userName = obj["UserName"] as string;
+                            if (!string.IsNullOrWhiteSpace(userName))
+                            {
+                                var account = new NTAccount(userName);
+                                var sid = (SecurityIdentifier)account.Translate(typeof(SecurityIdentifier));
+                                return sid.Value;
+                            }
                         }
                     }
                 }
@@ -125,14 +138,18 @@ namespace Otimizador.Core
                 int sessionId = Process.GetCurrentProcess().SessionId;
                 string query = string.Format("SELECT Handle FROM Win32_Process WHERE Name='explorer.exe' AND SessionId={0}", sessionId);
                 using (var procSearcher = new ManagementObjectSearcher(query))
+                using (ManagementObjectCollection procResults = procSearcher.Get())
                 {
-                    foreach (ManagementObject proc in procSearcher.Get())
+                    foreach (ManagementObject proc in procResults)
                     {
-                        ManagementBaseObject outParams = proc.InvokeMethod("GetOwnerSid", null, null);
-                        if (outParams != null && outParams["Sid"] != null)
+                        using (proc)
+                        using (ManagementBaseObject outParams = proc.InvokeMethod("GetOwnerSid", null, null))
                         {
-                            string sid = outParams["Sid"].ToString();
-                            if (!string.IsNullOrWhiteSpace(sid)) return sid;
+                            if (outParams != null && outParams["Sid"] != null)
+                            {
+                                string sid = outParams["Sid"].ToString();
+                                if (!string.IsNullOrWhiteSpace(sid)) return sid;
+                            }
                         }
                     }
                 }
@@ -195,6 +212,25 @@ namespace Otimizador.Core
             };
         }
 
+        public static string ResolveSystemExecutable(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName) || Path.IsPathRooted(fileName))
+            {
+                return fileName;
+            }
+            string sysCandidate = Path.Combine(Environment.SystemDirectory, fileName);
+            if (File.Exists(sysCandidate))
+            {
+                return sysCandidate;
+            }
+            string winCandidate = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), fileName);
+            if (File.Exists(winCandidate))
+            {
+                return winCandidate;
+            }
+            return fileName;
+        }
+
         public static ProcessRunResult RunProcess(
             string fileName,
             string arguments,
@@ -203,9 +239,10 @@ namespace Otimizador.Core
             bool captureOutput = true,
             Encoding outputEncoding = null)
         {
+            string resolvedExe = ResolveSystemExecutable(fileName);
             var psi = new ProcessStartInfo
             {
-                FileName = fileName,
+                FileName = resolvedExe,
                 Arguments = arguments ?? string.Empty,
                 UseShellExecute = false,
                 CreateNoWindow = hidden,
@@ -300,12 +337,27 @@ namespace Otimizador.Core
                 return File.Exists(exeName) ? exeName : null;
             }
 
+            string sysCandidate = Path.Combine(Environment.SystemDirectory, exeName);
+            if (File.Exists(sysCandidate)) return sysCandidate;
+
+            if (string.Equals(exeName, "winget.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                if (!string.IsNullOrWhiteSpace(localAppData))
+                {
+                    string windowsAppsWinget = Path.Combine(localAppData, @"Microsoft\WindowsApps\winget.exe");
+                    if (File.Exists(windowsAppsWinget)) return windowsAppsWinget;
+                }
+            }
+
             string pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
             foreach (string dir in pathEnv.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 try
                 {
-                    string candidate = Path.Combine(dir.Trim(), exeName);
+                    string trimmed = dir.Trim();
+                    if (!Path.IsPathRooted(trimmed)) continue;
+                    string candidate = Path.Combine(trimmed, exeName);
                     if (File.Exists(candidate)) return candidate;
                 }
                 catch

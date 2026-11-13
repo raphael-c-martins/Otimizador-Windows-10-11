@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Otimizador;
 using Otimizador.Core;
 
@@ -292,6 +293,121 @@ namespace Otimizador.Tests
                 finally
                 {
                     try { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(testPrefix, false); } catch { }
+                    TestHelpers.DeleteDirectorySafe(tmpDir);
+                }
+            });
+
+            runner.Describe("BackupManager, Sanitização de Comandos e Fallbacks");
+
+            runner.It("sanitiza rótulo do Ponto de Restauração e limita descrição a 63 caracteres", delegate
+            {
+                Assert.Equal("Personalizado", BackupManager.SanitizeRestorePointLabel(null));
+                Assert.Equal("Personalizado", BackupManager.SanitizeRestorePointLabel("   !!!   "));
+                Assert.Equal("Perfil_Corporativo_whoami_2026", BackupManager.SanitizeRestorePointLabel("Perfil Corporativo; $(whoami) 2026"));
+
+                string longLabel = new string('A', 60);
+                string sanitized = BackupManager.SanitizeRestorePointLabel(longLabel);
+                Assert.Equal(32, sanitized.Length);
+
+                string fullDesc = BackupManager.NewRestorePointDescription(longLabel);
+                Assert.IsTrue(fullDesc.Length <= 63, "Descrição deve caber no limite do Windows (<= 63 chars), veio: " + fullDesc.Length);
+            });
+
+            runner.It("confirma Ponto de Restauração apenas quando descrição e janela temporal coincidem", delegate
+            {
+                DateTime now = new DateTime(2026, 11, 13, 10, 0, 0);
+                Assert.IsTrue(BackupManager.IsMatchingRestorePoint("Otimizador_Gamer_2026", now.AddSeconds(5), "Otimizador_Gamer_2026", now));
+                Assert.IsTrue(BackupManager.IsMatchingRestorePoint("Otimizador_Gamer_2026", now.AddMinutes(-1), "Otimizador_Gamer_2026", now));
+                Assert.IsTrue(BackupManager.IsMatchingRestorePoint("Otimizador_Gamer_2026", DateTime.MinValue, "Otimizador_Gamer_2026", now));
+
+                Assert.IsFalse(BackupManager.IsMatchingRestorePoint("Otimizador_Gamer_2026", now.AddMinutes(-5), "Otimizador_Gamer_2026", now));
+                Assert.IsFalse(BackupManager.IsMatchingRestorePoint("Outro_Ponto", now, "Otimizador_Gamer_2026", now));
+                Assert.IsFalse(BackupManager.IsMatchingRestorePoint("otimizador_gamer_2026", now, "Otimizador_Gamer_2026", now));
+            });
+
+            runner.It("monta diagnóstico claro de falha do Ponto de Restauração (evento 8216 e códigos)", delegate
+            {
+                string withRecent = BackupManager.BuildNotConfirmedMessage(new RestorePointInfo
+                {
+                    Description = "Windows Update",
+                    CreationTime = new DateTime(2026, 11, 13, 9, 30, 0)
+                });
+                Assert.IsTrue(withRecent.Contains("8216"), "Deveria citar o evento 8216.");
+                Assert.IsTrue(withRecent.Contains("Windows Update"), "Deveria citar o ponto recente existente.");
+
+                string withoutPoints = BackupManager.BuildNotConfirmedMessage(null);
+                Assert.IsTrue(withoutPoints.Contains("Proteção do Sistema"));
+
+                Assert.IsTrue(BackupManager.DescribeSystemRestoreReturnCode(1058).Contains("1058"));
+                Assert.IsTrue(BackupManager.DescribeSystemRestoreReturnCode(112).Contains("112"));
+                Assert.IsTrue(BackupManager.DescribeSystemRestoreReturnCode(999).Contains("0x000003E7"));
+            });
+
+            runner.It("resolve executáveis padrão para System32 e valida caminhos confiáveis de desinstaladores", delegate
+            {
+                string resolvedCmd = SystemInfo.ResolveSystemExecutable("cmd.exe");
+                Assert.IsTrue(Path.IsPathRooted(resolvedCmd));
+                Assert.IsTrue(PerformanceManager.TestPathIsWithin(resolvedCmd, Environment.SystemDirectory),
+                    "cmd.exe deveria resolver para System32, veio: " + resolvedCmd);
+
+                Assert.IsTrue(AppManager.IsValidWinGetPackageId("Microsoft.GamingApp"));
+                Assert.IsTrue(AppManager.IsValidWinGetPackageId("XP9CXNGPPJ97XX"));
+                Assert.IsFalse(AppManager.IsValidWinGetPackageId(null));
+                Assert.IsFalse(AppManager.IsValidWinGetPackageId("pkg\" --silent"));
+                Assert.IsFalse(AppManager.IsValidWinGetPackageId("pkg; calc.exe"));
+
+                string fakeRoot = TestHelpers.NewTempDirectory("OtimizadorTrustedExeTest");
+                try
+                {
+                    string trustedSub = Path.Combine(fakeRoot, @"Microsoft\Edge\Application");
+                    string untrustedSub = Path.Combine(fakeRoot, "Downloads");
+                    Directory.CreateDirectory(trustedSub);
+                    Directory.CreateDirectory(untrustedSub);
+
+                    string trustedExe = Path.Combine(trustedSub, "setup.exe");
+                    string wrongNameExe = Path.Combine(trustedSub, "outro.exe");
+                    string hijackedExe = Path.Combine(untrustedSub, "setup.exe");
+                    File.WriteAllText(trustedExe, "stub");
+                    File.WriteAllText(wrongNameExe, "stub");
+                    File.WriteAllText(hijackedExe, "stub");
+
+                    string[] roots = new string[] { Path.Combine(fakeRoot, @"Microsoft\Edge") };
+                    Assert.IsTrue(AppManager.IsTrustedUninstallExecutable(trustedExe, "setup.exe", roots));
+                    Assert.IsFalse(AppManager.IsTrustedUninstallExecutable(wrongNameExe, "setup.exe", roots));
+                    Assert.IsFalse(AppManager.IsTrustedUninstallExecutable(hijackedExe, "setup.exe", roots));
+                    Assert.IsFalse(AppManager.IsTrustedUninstallExecutable(Path.Combine(trustedSub, @"..\..\..\Downloads\setup.exe"), "setup.exe", roots));
+                    Assert.IsFalse(AppManager.IsTrustedUninstallExecutable(@"setup.exe", "setup.exe", roots));
+                }
+                finally
+                {
+                    TestHelpers.DeleteDirectorySafe(fakeRoot);
+                }
+            });
+
+            runner.It("evita colisão ao arquivar diário restaurado quando .restaurado.json já existe", delegate
+            {
+                string tmpDir = TestHelpers.NewTempDirectory("OtimizadorUndoCollisionTest");
+                string subKey = "Software\\OtimizadorWindows-UndoCol-" + Guid.NewGuid().ToString("N");
+                try
+                {
+                    string journalPath = ChangeJournal.Start(tmpDir);
+                    ChangeJournal.SetRegistryValue("HKCU:\\" + subKey, "Teste", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                    ChangeJournal.Stop();
+
+                    string baseName = Path.GetFileNameWithoutExtension(journalPath);
+                    string existingRestored = Path.Combine(tmpDir, baseName + ".restaurado.json");
+                    File.WriteAllText(existingRestored, "{}");
+
+                    UndoResult res = UndoManager.InvokeSystemUndo(tmpDir);
+                    Assert.Equal(0, res.Failed);
+                    Assert.GreaterThan(res.Restored, 0);
+                    Assert.IsFalse(File.Exists(journalPath), "Diário original deveria ter sido arquivado.");
+                    Assert.IsTrue(File.Exists(Path.Combine(tmpDir, baseName + ".restaurado (2).json")),
+                        "Arquivo restaurado duplicado deveria usar sufixo único (2).");
+                }
+                finally
+                {
+                    try { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(subKey, false); } catch { }
                     TestHelpers.DeleteDirectorySafe(tmpDir);
                 }
             });

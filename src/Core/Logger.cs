@@ -32,14 +32,28 @@ namespace Otimizador.Core
             var systemSid = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
             var usersSid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
 
-            ApplySecureDirectoryAcl(new DirectoryInfo(path), adminSid, systemSid, usersSid);
-            foreach (var subDirPath in Directory.GetDirectories(path, "*", SearchOption.AllDirectories))
+            ApplySecureAclRecursively(new DirectoryInfo(path), adminSid, systemSid, usersSid);
+        }
+
+        private static void ApplySecureAclRecursively(
+            DirectoryInfo dirInfo,
+            SecurityIdentifier adminSid,
+            SecurityIdentifier systemSid,
+            SecurityIdentifier usersSid)
+        {
+            if ((dirInfo.Attributes & FileAttributes.ReparsePoint) != 0) return;
+
+            ApplySecureDirectoryAcl(dirInfo, adminSid, systemSid, usersSid);
+            foreach (FileInfo fileInfo in dirInfo.GetFiles())
             {
-                ApplySecureDirectoryAcl(new DirectoryInfo(subDirPath), adminSid, systemSid, usersSid);
+                if ((fileInfo.Attributes & FileAttributes.ReparsePoint) == 0)
+                {
+                    ApplySecureFileAcl(fileInfo, adminSid, systemSid, usersSid);
+                }
             }
-            foreach (var filePath in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+            foreach (DirectoryInfo subDir in dirInfo.GetDirectories())
             {
-                ApplySecureFileAcl(new FileInfo(filePath), adminSid, systemSid, usersSid);
+                ApplySecureAclRecursively(subDir, adminSid, systemSid, usersSid);
             }
         }
 

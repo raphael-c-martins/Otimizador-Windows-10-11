@@ -669,7 +669,8 @@ namespace Otimizador.UI
                 string folder = Path.GetDirectoryName(logFilePath);
                 if (!string.IsNullOrWhiteSpace(folder))
                 {
-                    Process.Start("explorer.exe", string.Format("\"{0}\"", folder));
+                    string explorerExe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+                    Process.Start(File.Exists(explorerExe) ? explorerExe : "explorer.exe", string.Format("\"{0}\"", folder));
                 }
             };
 

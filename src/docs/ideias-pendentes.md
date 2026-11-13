@@ -27,7 +27,7 @@ Documento de rastreamento local de ideias, melhorias e sugestões em backlog par
 - [x] **[AUD-02] [2026-10-22]**: **Remoções Recursivas Seguras (`ReparsePoint`)**: Validar caminhos permitidos por componentes e desvincular junções/symlinks sem percorrer destinos em `ClearSystemTempFiles`. *(Concluído na v15.0 com teste automatizado de junção NTFS)*
 - [ ] **[AUD-03] [2026-11-10]**: **Hardening adicional nos workflows CI e Release (Baixa)**: Fixar versão e verificar falhas do `PSScriptAnalyzer` no `.github/workflows/ci.yml` e adicionar `concurrency` e varredura `gitleaks` no `.github/workflows/release.yml`.
 - [x] **[AUD-04] [2026-11-11]**: **Limpeza de emojis na GUI WPF e documentação (Baixa)**: Remover excesso de emojis com variation selector (`FE0F`) e surrogate pairs nas abas, cards e categorias da interface (`src/UI/MainWindow.xaml`, `src/UI/MainWindowGUI.cs`) e subtítulos do repositório para manter sobriedade visual e compatibilidade tipográfica. *(Concluído em 2026-11-11)*
-- [ ] **[AUD-05] [2026-11-10]**: **Liberação determinística de objetos WMI e COM (Baixa)**: Envolver coleções `ManagementObjectSearcher.Get()` (`SystemInfo.cs`, `SecurityManager.cs`, `BackupManager.cs`) em blocos `using` e liberar explícitamente objetos COM `Schedule.Service` (`ChangeJournal.cs`) com `Marshal.FinalReleaseComObject`.
+- [x] **[AUD-05] [2026-11-10]**: **Liberação determinística de objetos WMI e COM (Baixa)**: Envolver coleções `ManagementObjectSearcher.Get()` (`SystemInfo.cs`, `SecurityManager.cs`, `BackupManager.cs`) em blocos `using` e liberar explícitamente objetos COM `Schedule.Service` (`ChangeJournal.cs`) com `Marshal.FinalReleaseComObject`. *(Concluído em 2026-11-13)*
 
 ## Ideias Rejeitadas / Descartadas
 - *Nenhuma ideia descartada até o momento.*

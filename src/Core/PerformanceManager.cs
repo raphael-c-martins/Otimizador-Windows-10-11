@@ -224,6 +224,16 @@ namespace Otimizador.Core
                 arguments = plain.Groups[2].Value;
             }
 
+            string[] edgeRoots = new string[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft\Edge")
+            };
+            if (!AppManager.IsTrustedUninstallExecutable(exe, "setup.exe", edgeRoots))
+            {
+                throw new InvalidOperationException(string.Format("Executável de desinstalação do Edge fora das pastas esperadas: '{0}'.", exe));
+            }
+
             var res = SystemInfo.RunProcess(exe, (arguments + " --force-uninstall").Trim(), 180000, true, false);
             Logger.Write("INFO", string.Format("Desinstalador do Edge finalizado (código {0}).", res.ExitCode));
 
@@ -241,18 +251,16 @@ namespace Otimizador.Core
             string progData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-            string[] shortcuts = new string[]
-            {
-                Path.Combine(publicDir, @"Desktop\Microsoft Edge.lnk"),
-                Path.Combine(userProfile, @"Desktop\Microsoft Edge.lnk"),
-                Path.Combine(progData, @"Microsoft\Windows\Start Menu\Programs\Microsoft Edge.lnk"),
-                Path.Combine(appData, @"Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\Microsoft Edge.lnk")
-            };
+            var shortcuts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(publicDir)) shortcuts.Add(Path.Combine(publicDir, @"Desktop\Microsoft Edge.lnk"));
+            if (!string.IsNullOrWhiteSpace(userProfile)) shortcuts.Add(Path.Combine(userProfile, @"Desktop\Microsoft Edge.lnk"));
+            if (!string.IsNullOrWhiteSpace(progData)) shortcuts.Add(Path.Combine(progData, @"Microsoft\Windows\Start Menu\Programs\Microsoft Edge.lnk"));
+            if (!string.IsNullOrWhiteSpace(appData)) shortcuts.Add(Path.Combine(appData, @"Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\Microsoft Edge.lnk"));
             foreach (string lnk in shortcuts)
             {
                 try
                 {
-                    if (!string.IsNullOrWhiteSpace(lnk) && File.Exists(lnk)) File.Delete(lnk);
+                    if (File.Exists(lnk)) File.Delete(lnk);
                 }
                 catch
                 {
@@ -317,8 +325,17 @@ namespace Otimizador.Core
                     }
                     else
                     {
-                        DeleteDirectoryContentsSafely((DirectoryInfo)entry);
-                        Directory.Delete(entry.FullName, false);
+                        int childInUse = 0;
+                        DeleteDirectoryContentsSafely((DirectoryInfo)entry, ref childInUse);
+                        try
+                        {
+                            Directory.Delete(entry.FullName, false);
+                        }
+                        catch
+                        {
+                            inUse += childInUse > 0 ? childInUse : 1;
+                            return;
+                        }
                     }
                 }
                 else
@@ -337,29 +354,36 @@ namespace Otimizador.Core
             }
         }
 
-        private static void DeleteDirectoryContentsSafely(DirectoryInfo dir)
+        private static void DeleteDirectoryContentsSafely(DirectoryInfo dir, ref int inUse)
         {
             foreach (FileSystemInfo child in dir.GetFileSystemInfos())
             {
-                if (child is DirectoryInfo)
+                try
                 {
-                    if ((child.Attributes & FileAttributes.ReparsePoint) != 0)
+                    if (child is DirectoryInfo)
                     {
-                        Directory.Delete(child.FullName, false);
+                        if ((child.Attributes & FileAttributes.ReparsePoint) != 0)
+                        {
+                            Directory.Delete(child.FullName, false);
+                        }
+                        else
+                        {
+                            DeleteDirectoryContentsSafely((DirectoryInfo)child, ref inUse);
+                            Directory.Delete(child.FullName, false);
+                        }
                     }
                     else
                     {
-                        DeleteDirectoryContentsSafely((DirectoryInfo)child);
-                        Directory.Delete(child.FullName, false);
+                        if ((child.Attributes & FileAttributes.ReadOnly) != 0)
+                        {
+                            File.SetAttributes(child.FullName, child.Attributes & ~FileAttributes.ReadOnly);
+                        }
+                        File.Delete(child.FullName);
                     }
                 }
-                else
+                catch
                 {
-                    if ((child.Attributes & FileAttributes.ReadOnly) != 0)
-                    {
-                        File.SetAttributes(child.FullName, child.Attributes & ~FileAttributes.ReadOnly);
-                    }
-                    File.Delete(child.FullName);
+                    inUse++;
                 }
             }
         }

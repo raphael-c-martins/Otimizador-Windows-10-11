@@ -5,6 +5,29 @@
 
 ---
 
+### [2026-11-13] - Endurecimento do Ponto de Restauração, Sanitização e Descarte WMI/COM (v15.1)
+
+- **Contexto e Motivação:**
+  Uma auditoria de falhas, sanitização de entradas, fallbacks e verificação real da criação do Ponto de Restauração identificou casos de borda importantes: no Windows 10/11 (especialmente 24H2+), a chamada WMI `CreateRestorePoint` pode retornar sucesso (`0`) mesmo quando o sistema ignora o ponto por já existir um recente (evento `8216` do System Restore); serviços dependentes (`VSS` e `swprv`) podem estar desativados; caminhos de desinstaladores lidos do Registro e executáveis chamados apenas por nome curto estavam sujeitos a resolução no diretório atual; o `Logger` percorria recursivamente pastas inteiras sem ignorar pontos de junção; e havia colisão ao mover diários `.restaurado.json` no `UndoManager`, além da pendência `AUD-05` de descarte determinístico de objetos WMI e COM.
+
+- **Decisões Arquiteturais e Soluções Técnicas:**
+  1. **Blindagem do Ponto de Restauração (`BackupManager.cs`):**
+     - Rejeição antecipada de diretiva de grupo (`DisableSR = 1`) e de Windows Server (onde a classe WMI `SystemRestore` não existe).
+     - Liberação temporária de `VSS` e `swprv` quando estiverem `Disabled` (revertidos ao estado original no bloco `finally`).
+     - Sanitização de rótulos de perfis personalizados (`SanitizeRestorePointLabel`, até 32 caracteres ASCII) para manter a descrição total em no máximo 63 caracteres (abaixo do teto de 64 caracteres do Windows), garantindo que a conferência pós-criação via WMI (`FindRestorePoint` / `IsMatchingRestorePoint`) não falhe por truncamento e trate ausência de `CreationTime`.
+     - Diagnóstico claro em falhas (`DescribeSystemRestoreReturnCode` e `BuildNotConfirmedMessage` orientando sobre o evento `8216`) e restauração segura do valor `SystemRestorePointCreationFrequency`.
+  2. **Sanitização de executáveis, caminhos e fallback isolado (`SystemInfo.cs`, `AppManager.cs`, `PerformanceManager.cs`, `MainWindowGUI.cs`):**
+     - `SystemInfo.ResolveSystemExecutable` e `FindExecutableInPath` resolvem binários do sistema para `System32`/`Windows`, priorizam `%LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe` para `winget.exe` e ignoram segmentos relativos no `PATH`. Botão de pasta de logs na GUI passa a chamar `%WINDIR%\explorer.exe`.
+     - `AppManager.IsValidWinGetPackageId` valida identificadores antes de formatar parâmetros para `winget`; `AppManager.IsTrustedUninstallExecutable` valida `OneDriveSetup.exe` e `setup.exe` do Edge contra diretórios confiáveis por componentes (`TestPathIsWithin`) antes da execução.
+     - `PerformanceManager.DeleteDirectoryContentsSafely` isola falhas por arquivo/subpasta na limpeza de temporários, evitando que um arquivo bloqueado impeça a remoção de arquivos livres na mesma pasta.
+  3. **Integridade de ACLs, Undo e descarte WMI/COM (`Logger.cs`, `UndoManager.cs`, `ChangeJournal.cs`, `SecurityManager.cs`, `AUD-05`):**
+     - `Logger.InitializeSecureDataDirectory` usa travessia recursiva própria (`ApplySecureAclRecursively`) ignorando `ReparsePoint`; `UndoManager.InvokeSystemUndo` usa `Logger.ResolveUniqueFilePath` para não falhar em colisões de `.restaurado.json`.
+     - Todas as consultas e parâmetros WMI (`ManagementObjectCollection`, `ManagementObject`, `inParams`, `outParams`) foram colocados em `using` e objetos COM do Agendador de Tarefas (`Schedule.Service`) passaram a ser liberados com `Marshal.FinalReleaseComObject`, diferenciando tarefa inexistente (`FileNotFoundException` / `0x80070002` / `0x80070003`) de erros reais e registrando aviso se `sc.Start()` falhar no Undo.
+  4. **Testes automatizados ampliados para 50 verificações:**
+     - Novos testes em `SegurancaTests.cs` e `LimpezaTests.cs` validando sanitização, limite de 63 caracteres e confirmação de ponto de restauração, resolução segura de executáveis, validação de ID WinGet e desinstaladores, colisão de `.restaurado.json` e limpeza parcial com arquivo em uso.
+
+---
+
 ### [2026-11-12] - Endurecimento de Cibersegurança Lote 1 (v15.1)
 
 - **Contexto e Motivação:**

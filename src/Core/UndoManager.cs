@@ -39,9 +39,9 @@ namespace Otimizador.Core
 
                     if (partial.Failed == 0)
                     {
-                        string restoredPath = Path.Combine(
+                        string restoredPath = Logger.ResolveUniqueFilePath(Path.Combine(
                             file.DirectoryName ?? journalDirectory,
-                            file.Name.Substring(0, file.Name.Length - ".json".Length) + ".restaurado.json");
+                            file.Name.Substring(0, file.Name.Length - ".json".Length) + ".restaurado.json"));
                         File.Move(file.FullName, restoredPath);
                         Logger.Write("OK", string.Format("{0}: {1} alterações revertidas.", file.Name, partial.Restored));
                     }
