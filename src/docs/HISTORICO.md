@@ -5,6 +5,17 @@
 
 ---
 
+### [2026-11-16] - Capturas da Interface Gráfica WPF no README.md
+
+- **Contexto e Motivação:**
+  Permitir que quem visita o repositório no GitHub visualize a interface gráfica WPF Dark Mode, as opções de Privacidade e Cibersegurança, a aba de Debloat e o Terminal de Logs em modo simulação (`-DryRun`) antes de baixar o executável (`ID-019`).
+
+- **Execução:**
+  - Geração de 4 capturas da UI real em `src/docs/screenshots/` (`otim1.png`–`otim4.png`) utilizando cabeçalho e logs demonstrativos (`admin.demo` / `WORKSTATION-01`) sem expor dados da máquina local nem alterar o sistema.
+  - Inclusão da grade de imagens na seção `## Interface Gráfica (Capturas)` do `README.md`.
+
+---
+
 ### [2026-11-13] - Polling WMI e Tratamento Honesto de Ponto de Restauração Recente (v15.1.3)
 
 - **Contexto e Motivação:**

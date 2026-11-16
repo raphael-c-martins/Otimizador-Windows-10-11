@@ -14,6 +14,18 @@ O **Otimizador de Windows** é um executável nativo (`.exe`, compilado em C# / 
 
 ---
 
+## Interface Gráfica (Capturas)
+
+> Telas reais renderizadas em ambiente de demonstração (`admin.demo` / `WORKSTATION-01`, sem alterar o sistema).
+
+| Perfis Rápidos (Presets) | Privacidade & Cibersegurança |
+| :---: | :---: |
+| ![Perfis Rápidos](src/docs/screenshots/otim1.png) | ![Privacidade e Segurança](src/docs/screenshots/otim2.png) |
+| **Aplicativos (Debloat)** | **Terminal de Logs (`-DryRun`)** |
+| ![Aplicativos Debloat](src/docs/screenshots/otim3.png) | ![Terminal de Logs DryRun](src/docs/screenshots/otim4.png) |
+
+---
+
 ## Execução Rápida
 
 ### Opção 1: Executável Direto na Raiz (Recomendado — Funciona com PowerShell/Batch bloqueados)
@@ -158,7 +170,7 @@ Otimizador-Windows-10-11/
 │   │   ├── ConsoleTUI.cs              # Modo terminal
 │   │   └── AppSelectionModal.cs       # Seleção de aplicativos no modo terminal
 │   ├── tests/                         # Suíte de testes automatizados em C# (Otimizador.Tests.csproj)
-│   └── docs/                          # CHANGELOG.md, HISTORICO.md e ideias-pendentes.md
+│   └── docs/                          # CHANGELOG.md, HISTORICO.md, ideias-pendentes.md e screenshots/
 └── .github/                           # Workflows de CI/Release e regras do PSScriptAnalyzer
 ```
 
