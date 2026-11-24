@@ -77,6 +77,7 @@
     <Compile Include="Core\SystemInfo.cs" />
     <Compile Include="Core\ChangeJournal.cs" />
     <Compile Include="Core\AppManager.cs" />
+    <Compile Include="Core\OneDriveManager.cs" />
     <Compile Include="Core\PrivacyManager.cs" />
     <Compile Include="Core\SecurityManager.cs" />
     <Compile Include="Core\PerformanceManager.cs" />

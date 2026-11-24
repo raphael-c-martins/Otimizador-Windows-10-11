@@ -45,7 +45,7 @@ namespace Otimizador.Core
                 { "Disable-FastStartup", delegate(ExecutionContext ctx) { PerformanceManager.DisableFastStartup(ctx.IsPortable); } },
                 { "Enable-UltimatePerformancePlan", delegate(ExecutionContext ctx) { PerformanceManager.EnableUltimatePerformancePlan(ctx.IsPortable, ctx.StateDirectory); } },
                 { "Disable-LegacyHeavyServices", delegate(ExecutionContext ctx) { PerformanceManager.DisableLegacyHeavyServices(); } },
-                { "Remove-OneDriveDeep", delegate(ExecutionContext ctx) { AppManager.RemoveOneDriveDeep(); } },
+                { "Remove-OneDriveDeep", delegate(ExecutionContext ctx) { AppManager.RemoveOneDriveDeep(ctx != null ? ctx.UserSid : null); } },
                 { "Remove-MicrosoftEdge", delegate(ExecutionContext ctx) { PerformanceManager.RemoveMicrosoftEdge(); } },
                 { "Clear-SystemTempFiles", delegate(ExecutionContext ctx) { PerformanceManager.ClearSystemTempFiles(ctx.ProtectedPaths.ToArray()); } }
             };

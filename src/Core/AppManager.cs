@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Microsoft.Win32;
 using Windows.ApplicationModel;
 using Windows.Foundation;
 using Windows.Management.Deployment;
@@ -25,11 +24,27 @@ namespace Otimizador.Core
         public List<ProvisionedPackageInfo> Provisioned { get; set; }
     }
 
+    public enum WinGetUninstallStatus
+    {
+        NotInstalled,
+        Removed,
+        Failed
+    }
+
+    internal sealed class DismMissingPackageEntry
+    {
+        public string DisplayName { get; set; }
+        public string PackageName { get; set; }
+        public int ExitCode { get; set; }
+    }
+
     public static class AppManager
     {
         private const int WinGetTimeoutMs = 300000;
         private const int WinGetNoPackageFound = -1978335212; // 0x8A150014
+        private const int WinRtTimeoutMs = 120000;
         private static readonly Regex _winGetIdRegex = new Regex("^[A-Za-z0-9][A-Za-z0-9._+-]*$");
+        private static readonly Regex _ansiEscapeRegex = new Regex(@"\x1B\[[0-9;?]*[A-Za-z]");
 
         public static string ConvertToPackageWildcard(string pattern)
         {
@@ -49,7 +64,34 @@ namespace Otimizador.Core
             return Regex.IsMatch(value, regexPattern, RegexOptions.IgnoreCase);
         }
 
-        private const int WinRtTimeoutMs = 120000;
+        /// <summary>
+        /// Extrai o PackageFamilyName (&lt;Nome&gt;_&lt;PublisherId&gt;) a partir de um PackageFullName de 5 segmentos.
+        /// </summary>
+        public static string TryExtractPackageFamilyName(string packageFullName)
+        {
+            if (string.IsNullOrWhiteSpace(packageFullName)) return null;
+            string[] parts = packageFullName.Trim().Split('_');
+            if (parts.Length != 5) return null;
+            if (string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[4])) return null;
+            return parts[0].Trim() + "_" + parts[4].Trim();
+        }
+
+        public static bool IsDismMissingPackageExitCode(int exitCode)
+        {
+            return exitCode == 2 || exitCode == 3;
+        }
+
+        /// <summary>
+        /// Classifica falhas do DISM por arquivo/caminho ausente como AVISO quando nenhuma cópia instalada falhou.
+        /// </summary>
+        public static string ClassifyProvisionedDismOutcome(int exitCode, bool hasInstalledRemovalError)
+        {
+            if (IsDismMissingPackageExitCode(exitCode) && !hasInstalledRemovalError)
+            {
+                return "AVISO";
+            }
+            return "ERRO";
+        }
 
         private static DeploymentResult WaitWinRtOp(IAsyncOperationWithProgress<DeploymentResult, DeploymentProgress> op)
         {
@@ -190,6 +232,7 @@ namespace Otimizador.Core
                         {
                             DisplayName = currentDisplay ?? currentPkg,
                             PackageName = currentPkg,
+                            FamilyName = TryExtractPackageFamilyName(currentPkg),
                             FromWinRt = false
                         });
                     }
@@ -200,31 +243,47 @@ namespace Otimizador.Core
             return list;
         }
 
-        private static void RemoveProvisionedPackage(PackageManager pm, ProvisionedPackageInfo prov, bool hasInstalledMatch)
+        private static string NormalizeSingleLine(string text)
         {
-            if (prov.FromWinRt && !string.IsNullOrWhiteSpace(prov.FamilyName))
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            string collapsed = Regex.Replace(text, @"[\r\n\t]+", " ").Trim();
+            return collapsed.Length > 220 ? collapsed.Substring(0, 217) + "..." : collapsed;
+        }
+
+        private static bool TryRemoveProvisionedPackage(PackageManager pm, ProvisionedPackageInfo prov, out int missingDismExitCode)
+        {
+            missingDismExitCode = 0;
+
+            string familyName = !string.IsNullOrWhiteSpace(prov.FamilyName)
+                ? prov.FamilyName
+                : TryExtractPackageFamilyName(prov.PackageName);
+
+            if (!string.IsNullOrWhiteSpace(familyName))
             {
                 try
                 {
-                    WaitWinRtOp(pm.DeprovisionPackageForAllUsersAsync(prov.FamilyName));
-                    return;
+                    WaitWinRtOp(pm.DeprovisionPackageForAllUsersAsync(familyName));
+                    return true;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Logger.Write("INFO", string.Format("Desprovisionamento WinRT indisponível para '{0}' ({1}); tentando via DISM.",
+                        prov.DisplayName, NormalizeSingleLine(ex.Message)));
                 }
             }
 
             string dismExe = SystemInfo.ResolveSystemExecutable("dism.exe");
             var res = SystemInfo.RunProcess(dismExe, string.Format("/Online /Remove-ProvisionedAppxPackage /PackageName:\"{0}\" /NoRestart", prov.PackageName), 120000);
-            if (res.ExitCode == 3 && !hasInstalledMatch)
+            if (res.ExitCode == 0)
             {
-                Logger.Write("AVISO", string.Format("Pacote provisionado '{0}' sem arquivos no disco (registro órfão do Windows, DISM código 3); o aplicativo não está ativo.", prov.DisplayName));
-                return;
+                return true;
             }
-            if (res.ExitCode != 0)
+            if (IsDismMissingPackageExitCode(res.ExitCode))
             {
-                throw new InvalidOperationException(string.Format("DISM falhou ao remover '{0}' (código {1}).", prov.PackageName, res.ExitCode));
+                missingDismExitCode = res.ExitCode;
+                return false;
             }
+            throw new InvalidOperationException(string.Format("DISM falhou ao remover '{0}' (código {1}).", prov.PackageName, res.ExitCode));
         }
 
         private static bool IsProtectedSystemShellPackage(Package pkg)
@@ -252,16 +311,29 @@ namespace Otimizador.Core
 
             var pm = new PackageManager();
             var errors = new List<string>();
+            var missingDismEntries = new List<DismMissingPackageEntry>();
             int found = 0;
-            int installedFound = 0;
-            var removedInstalled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var removedProvisioned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int installedErrorCount = 0;
+
+            var matchedInstalled = new List<Package>();
+            var seenInstalled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var matchedProvisioned = new List<ProvisionedPackageInfo>();
+            var seenProvisioned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             string[] patterns = (appInfo.PackageName ?? string.Empty).Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (string rawPattern in patterns)
             {
                 string wildPattern = ConvertToPackageWildcard(rawPattern);
                 if (string.IsNullOrWhiteSpace(wildPattern)) continue;
+
+                foreach (ProvisionedPackageInfo prov in cache.Provisioned)
+                {
+                    if (!IsPackageMatch(prov.DisplayName, wildPattern) && !IsPackageMatch(prov.PackageName, wildPattern)) continue;
+                    if (seenProvisioned.Add(prov.PackageName))
+                    {
+                        matchedProvisioned.Add(prov);
+                    }
+                }
 
                 foreach (Package pkg in cache.Installed)
                 {
@@ -271,50 +343,90 @@ namespace Otimizador.Core
                         Logger.Write("INFO", string.Format("Componente protegido do sistema preservado ({0}).", pkg.Id.Name));
                         continue;
                     }
-                    if (!removedInstalled.Add(pkg.Id.FullName)) continue;
-
-                    found++;
-                    installedFound++;
-                    try
+                    if (seenInstalled.Add(pkg.Id.FullName))
                     {
-                        WaitWinRtOp(pm.RemovePackageAsync(pkg.Id.FullName, RemovalOptions.RemoveForAllUsers));
-                    }
-                    catch
-                    {
-                        try
-                        {
-                            WaitWinRtOp(pm.RemovePackageAsync(pkg.Id.FullName));
-                        }
-                        catch (Exception ex)
-                        {
-                            errors.Add(string.Format("{0}: {1}", pkg.Id.Name, ex.Message));
-                        }
+                        matchedInstalled.Add(pkg);
                     }
                 }
+            }
 
-                foreach (ProvisionedPackageInfo prov in cache.Provisioned)
+            // 1. Desprovisiona primeiro para preservar manifestos/arquivos em disco durante a remoção global
+            foreach (ProvisionedPackageInfo prov in matchedProvisioned)
+            {
+                found++;
+                try
                 {
-                    if (!IsPackageMatch(prov.DisplayName, wildPattern) && !IsPackageMatch(prov.PackageName, wildPattern)) continue;
-                    if (!removedProvisioned.Add(prov.PackageName)) continue;
+                    int missingCode;
+                    if (!TryRemoveProvisionedPackage(pm, prov, out missingCode))
+                    {
+                        missingDismEntries.Add(new DismMissingPackageEntry
+                        {
+                            DisplayName = prov.DisplayName,
+                            PackageName = prov.PackageName,
+                            ExitCode = missingCode
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(string.Format("{0} (provisionado): {1}", prov.DisplayName, NormalizeSingleLine(ex.Message)));
+                }
+            }
 
-                    found++;
+            // 2. Remove pacotes instalados nos perfis existentes
+            foreach (Package pkg in matchedInstalled)
+            {
+                found++;
+                try
+                {
+                    WaitWinRtOp(pm.RemovePackageAsync(pkg.Id.FullName, RemovalOptions.RemoveForAllUsers));
+                }
+                catch
+                {
                     try
                     {
-                        RemoveProvisionedPackage(pm, prov, installedFound > 0);
+                        WaitWinRtOp(pm.RemovePackageAsync(pkg.Id.FullName));
                     }
                     catch (Exception ex)
                     {
-                        errors.Add(string.Format("{0} (provisionado): {1}", prov.DisplayName, ex.Message));
+                        installedErrorCount++;
+                        errors.Add(string.Format("{0}: {1}", pkg.Id.Name, NormalizeSingleLine(ex.Message)));
                     }
                 }
             }
 
-            if (!string.IsNullOrWhiteSpace(appInfo.WinGetId) && InvokeWinGetUninstall(appInfo.WinGetId))
+            // 3. Só avalia DISM código 2/3 após saber se alguma cópia instalada falhou ao ser removida
+            foreach (DismMissingPackageEntry missing in missingDismEntries)
             {
-                found++;
+                string outcome = ClassifyProvisionedDismOutcome(missing.ExitCode, installedErrorCount > 0);
+                if (outcome == "AVISO")
+                {
+                    Logger.Write("AVISO", string.Format(
+                        "Pacote provisionado '{0}' sem arquivos ou manifesto no disco (registro órfão/stub do Windows, DISM código {1}); nenhuma cópia instalada permaneceu ativa.",
+                        missing.DisplayName, missing.ExitCode));
+                }
+                else
+                {
+                    errors.Add(string.Format("{0} (provisionado): DISM falhou ao remover '{1}' (código {2}).",
+                        missing.DisplayName, missing.PackageName, missing.ExitCode));
+                }
             }
 
-            if (found == 0)
+            bool winGetFailed = false;
+            if (!string.IsNullOrWhiteSpace(appInfo.WinGetId))
+            {
+                WinGetUninstallStatus wgStatus = InvokeWinGetUninstallWithStatus(appInfo.WinGetId);
+                if (wgStatus == WinGetUninstallStatus.Removed)
+                {
+                    found++;
+                }
+                else if (wgStatus == WinGetUninstallStatus.Failed)
+                {
+                    winGetFailed = true;
+                }
+            }
+
+            if (found == 0 && !winGetFailed)
             {
                 Logger.Write("INFO", string.Format("{0}: não instalado (nada a remover).", appInfo.FriendlyName));
             }
@@ -328,6 +440,52 @@ namespace Otimizador.Core
         {
             if (string.IsNullOrWhiteSpace(winGetId)) return false;
             return _winGetIdRegex.IsMatch(winGetId);
+        }
+
+        public static bool TryParseUninstallCommand(string uninstallString, out string exePath, out string arguments)
+        {
+            exePath = null;
+            arguments = string.Empty;
+            if (string.IsNullOrWhiteSpace(uninstallString)) return false;
+
+            Match quoted = Regex.Match(uninstallString, "^\\s*\"([^\"]+)\"\\s*(.*)$");
+            if (quoted.Success)
+            {
+                exePath = quoted.Groups[1].Value;
+                arguments = (quoted.Groups[2].Value ?? string.Empty).Trim();
+                return !string.IsNullOrWhiteSpace(exePath);
+            }
+
+            Match plain = Regex.Match(uninstallString, @"^\s*(\S+)\s*(.*)$");
+            if (plain.Success)
+            {
+                exePath = plain.Groups[1].Value;
+                arguments = (plain.Groups[2].Value ?? string.Empty).Trim();
+                return !string.IsNullOrWhiteSpace(exePath);
+            }
+
+            return false;
+        }
+
+        public static string ExtractLastDiagnosticLine(string stdErr, string stdOut)
+        {
+            string[] sources = new string[] { stdErr, stdOut };
+            foreach (string raw in sources)
+            {
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+                string cleaned = _ansiEscapeRegex.Replace(raw, string.Empty);
+                string[] lines = cleaned.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = lines.Length - 1; i >= 0; i--)
+                {
+                    string line = lines[i].Trim();
+                    if (string.IsNullOrEmpty(line)) continue;
+                    if (line == "-" || line == "\\" || line == "|" || line == "/") continue;
+                    if (Regex.IsMatch(line, @"^[\s\-\|\\/\.\u2580-\u259F]+$")) continue;
+                    if (line.Length > 220) line = line.Substring(0, 217) + "...";
+                    return line;
+                }
+            }
+            return string.Empty;
         }
 
         public static bool IsTrustedUninstallExecutable(string exePath, string expectedExeName, string[] allowedRoots)
@@ -364,143 +522,57 @@ namespace Otimizador.Core
             return false;
         }
 
-        private static string[] GetTrustedOneDriveRoots()
-        {
-            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            string pf86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-            string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-            string interactiveProfile = SystemInfo.GetUserProfilePath(SystemInfo.GetInteractiveUserSid());
-
-            var roots = new List<string>();
-            if (!string.IsNullOrWhiteSpace(localAppData)) roots.Add(Path.Combine(localAppData, @"Microsoft\OneDrive"));
-            if (!string.IsNullOrWhiteSpace(interactiveProfile)) roots.Add(Path.Combine(interactiveProfile, @"AppData\Local\Microsoft\OneDrive"));
-            if (!string.IsNullOrWhiteSpace(pf)) roots.Add(Path.Combine(pf, @"Microsoft OneDrive"));
-            if (!string.IsNullOrWhiteSpace(pf86)) roots.Add(Path.Combine(pf86, @"Microsoft OneDrive"));
-            if (!string.IsNullOrWhiteSpace(winDir))
-            {
-                roots.Add(Path.Combine(winDir, "System32"));
-                roots.Add(Path.Combine(winDir, "SysWOW64"));
-            }
-            return roots.ToArray();
-        }
-
-        public static bool InvokeWinGetUninstall(string winGetId)
+        public static WinGetUninstallStatus InvokeWinGetUninstallWithStatus(string winGetId)
         {
             if (!IsValidWinGetPackageId(winGetId))
             {
                 Logger.Write("AVISO", string.Format("Identificador WinGet inválido ignorado: '{0}'.", winGetId ?? string.Empty));
-                return false;
+                return WinGetUninstallStatus.Failed;
             }
 
             string wingetExe = SystemInfo.FindExecutableInPath("winget.exe");
-            if (string.IsNullOrWhiteSpace(wingetExe)) return false;
+            if (string.IsNullOrWhiteSpace(wingetExe)) return WinGetUninstallStatus.NotInstalled;
 
             string args = string.Format("uninstall --id \"{0}\" --exact --silent --force --disable-interactivity --accept-source-agreements", winGetId);
-            var res = SystemInfo.RunProcess(wingetExe, args, WinGetTimeoutMs, true, false);
+            var res = SystemInfo.RunProcess(wingetExe, args, WinGetTimeoutMs, true, true, Encoding.UTF8);
             if (res.TimedOut)
             {
                 Logger.Write("AVISO", string.Format("WinGet excedeu {0} s ao remover '{1}' e foi interrompido.", WinGetTimeoutMs / 1000, winGetId));
-                return false;
+                return WinGetUninstallStatus.Failed;
             }
 
             if (res.ExitCode == 0)
             {
                 Logger.Write("INFO", string.Format("WinGet removeu '{0}'.", winGetId));
-                return true;
+                return WinGetUninstallStatus.Removed;
             }
-            else if (res.ExitCode != WinGetNoPackageFound)
+            if (res.ExitCode == WinGetNoPackageFound)
             {
-                Logger.Write("AVISO", string.Format("WinGet retornou código {0} ao remover '{1}'.", res.ExitCode, winGetId));
-            }
-            return false;
-        }
-
-        public static void RemoveOneDriveDeep()
-        {
-            foreach (Process proc in Process.GetProcessesByName("OneDrive"))
-            {
-                try { proc.Kill(); proc.WaitForExit(5000); } catch { }
-                finally { proc.Dispose(); }
+                return WinGetUninstallStatus.NotInstalled;
             }
 
-            string setup = null;
-            string arguments = "/uninstall";
-
-            string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-            string pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            string pf86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-            string[] systemCandidates = new string[]
+            string detail = ExtractLastDiagnosticLine(res.StdErr, res.StdOut);
+            if (string.IsNullOrWhiteSpace(detail))
             {
-                string.IsNullOrWhiteSpace(winDir) ? null : Path.Combine(winDir, @"System32\OneDriveSetup.exe"),
-                string.IsNullOrWhiteSpace(winDir) ? null : Path.Combine(winDir, @"SysWOW64\OneDriveSetup.exe"),
-                string.IsNullOrWhiteSpace(pf) ? null : Path.Combine(pf, @"Microsoft OneDrive\OneDriveSetup.exe"),
-                string.IsNullOrWhiteSpace(pf86) ? null : Path.Combine(pf86, @"Microsoft OneDrive\OneDriveSetup.exe")
-            };
-            foreach (string c in systemCandidates)
-            {
-                if (!string.IsNullOrWhiteSpace(c) && File.Exists(c)) { setup = c; break; }
-            }
-
-            if (string.IsNullOrWhiteSpace(setup))
-            {
-                string[] trustedRoots = GetTrustedOneDriveRoots();
-                RegistryLocation loc = ChangeJournal.ConvertToRegistryLocation(@"HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\OneDriveSetup.exe");
-                using (RegistryKey baseKey = ChangeJournal.OpenBaseRegistryKey(loc.Hive))
-                using (RegistryKey key = baseKey.OpenSubKey(loc.SubKey))
-                {
-                    if (key != null)
-                    {
-                        string unStr = Convert.ToString(key.GetValue("UninstallString")) ?? string.Empty;
-                        string candidate = null;
-                        string candidateArgs = "/uninstall";
-                        Match quoted = Regex.Match(unStr, "^\\s*\"([^\"]+)\"\\s*(.*)$");
-                        if (quoted.Success)
-                        {
-                            candidate = quoted.Groups[1].Value;
-                            candidateArgs = quoted.Groups[2].Value;
-                        }
-                        else
-                        {
-                            Match plain = Regex.Match(unStr, @"^\s*(\S+)\s*(.*)$");
-                            if (plain.Success)
-                            {
-                                candidate = plain.Groups[1].Value;
-                                candidateArgs = plain.Groups[2].Value;
-                            }
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(candidate))
-                        {
-                            if (IsTrustedUninstallExecutable(candidate, "OneDriveSetup.exe", trustedRoots))
-                            {
-                                setup = candidate;
-                                arguments = string.IsNullOrWhiteSpace(candidateArgs) ? "/uninstall" : candidateArgs;
-                            }
-                            else
-                            {
-                                Logger.Write("AVISO", string.Format("Caminho não confiável ignorado no registro do OneDrive: '{0}'.", candidate));
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(setup) || !File.Exists(setup))
-            {
-                Logger.Write("INFO", "OneDrive não encontrado (já removido ou não instalado).");
-                return;
-            }
-
-            var res = SystemInfo.RunProcess(setup, arguments, 180000, true, false);
-            if (res.ExitCode != 0)
-            {
-                Logger.Write("AVISO", string.Format("Desinstalador do OneDrive retornou código {0}.", res.ExitCode));
+                Logger.Write("AVISO", string.Format("WinGet retornou código {0} (0x{1:X8}) ao remover '{2}'.",
+                    res.ExitCode, unchecked((uint)res.ExitCode), winGetId));
             }
             else
             {
-                Logger.Write("INFO", "OneDrive desinstalado. Os arquivos locais da pasta OneDrive foram preservados.");
+                Logger.Write("AVISO", string.Format("WinGet retornou código {0} (0x{1:X8}) ao remover '{2}': {3}",
+                    res.ExitCode, unchecked((uint)res.ExitCode), winGetId, detail));
             }
+            return WinGetUninstallStatus.Failed;
+        }
+
+        public static bool InvokeWinGetUninstall(string winGetId)
+        {
+            return InvokeWinGetUninstallWithStatus(winGetId) == WinGetUninstallStatus.Removed;
+        }
+
+        public static void RemoveOneDriveDeep(string userSid = null)
+        {
+            OneDriveManager.RemoveOneDriveDeep(userSid);
         }
     }
 }

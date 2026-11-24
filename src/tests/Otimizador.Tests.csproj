@@ -49,6 +49,7 @@
     <Compile Include="TestRunner.cs" />
     <Compile Include="CatalogoTests.cs" />
     <Compile Include="SegurancaTests.cs" />
+    <Compile Include="AppRemovalTests.cs" />
     <Compile Include="MotorTests.cs" />
     <Compile Include="RegistroTests.cs" />
     <Compile Include="LimpezaTests.cs" />
