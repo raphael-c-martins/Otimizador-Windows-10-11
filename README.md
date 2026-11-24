@@ -154,7 +154,8 @@ Otimizador-Windows-10-11/
 │   │   ├── OptimizationEngine.cs      # Motor único de execução (GUI e CLI)
 │   │   ├── ChangeJournal.cs           # Registro de snapshot e reversão (Undo)
 │   │   ├── SecurityManager.cs         # Hardening SMB (C$, D$, ADMIN$), Lote 1 e reinício seguro
-│   │   ├── AppManager.cs              # Remoção Appx/Provisioned (WinRT/DISM), WinGet e OneDrive
+│   │   ├── AppManager.cs              # Remoção Appx/Provisioned (WinRT/DISM) e WinGet
+│   │   ├── OneDriveManager.cs         # Remoção do OneDrive por máquina, por usuário e sob outra conta
 │   │   ├── PrivacyManager.cs          # Telemetria, anúncios, Recall e Copilot
 │   │   ├── PerformanceManager.cs      # Interface, energia, serviços, Edge e limpeza segura
 │   │   ├── GamingManager.cs           # GameDVR e protocolos do Xbox

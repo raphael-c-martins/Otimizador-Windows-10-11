@@ -5,6 +5,18 @@
 
 ---
 
+### [2026-11-24] - Ordem Appx/DISM, Remoção do OneDrive sob Outra Conta e Diagnóstico WinGet (v15.1.4)
+
+- **Contexto e Motivação:**
+  Execução real da v15.1.3 em estação Windows 11 Pro 24H2 (`build 26100`) com o programa elevado por outra conta administrativa revelou três falhas reais: (1) 13 aplicativos provisionados atualizados pela Store falharam no DISM com código `2` ou `3` porque `RemovePackageAsync(..., RemoveForAllUsers)` era executado antes do desprovisionamento e apagava os manifestos em disco antes da chamada ao DISM; (2) `RemoveOneDriveDeep` priorizava `System32\OneDriveSetup.exe /uninstall` com a conta administrativa elevada em vez de atuar no perfil conectado/por máquina, retornando `-2147219808` (`0x800406A0`) e deixando o OneDrive ativo; e (3) `InvokeWinGetUninstall` descartava a saída padrão e deixava o log exibir `"não instalado (nada a remover)"` logo após um erro `0x8A150030` (`-1978335184`).
+
+- **Decisões Arquiteturais e Soluções Técnicas:**
+  1. **Desprovisionamento antes da remoção instalada (`AppManager.cs`):** `RemoveAppByDefinition` passa a desprovisionar pacotes (`DeprovisionPackageForAllUsersAsync` / `dism.exe`) antes de remover as instalações de usuário, extrai `FamilyName` mesmo no fallback do DISM e avalia códigos `2` e `3` após a etapa de instalação (classificando como `AVISO` apenas se nenhuma cópia instalada falhar).
+  2. **Módulo dedicado e limpeza segura do OneDrive (`OneDriveManager.cs`, `PerformanceManager.cs`, `OptimizationEngine.cs`):** extração da responsabilidade para `OneDriveManager` (mantendo arquivos abaixo do teto de ~800 linhas e preservando `AppManager.RemoveOneDriveDeep` como fachada). O fluxo detecta instalações por máquina (`HKLM` + `/allusers`), por usuário conectado (`HKU\<SID>`), Store (`*OneDriveSync*`), `Run` e `WinGet`, encerra processos auxiliares e aplica limpeza segura (desativação de tarefas no `Schedule.Service`, `CLSID` do Explorer via `ChangeJournal`, remoção de `Run`/`Uninstall` e exclusão de binários via `DeleteDirectoryTreeSafely` sem seguir junções NTFS e sem tocar na pasta pessoal `OneDrive`).
+  3. **Diagnóstico e reutilização (`AppManager.cs`, `PerformanceManager.cs`):** `TryParseUninstallCommand` unificado entre Edge e OneDrive, captura UTF-8 no WinGet com `ExtractLastDiagnosticLine` e 7 novos testes automatizados em `AppRemovalTests.cs` (60 verificações no total).
+
+---
+
 ### [2026-11-16] - Capturas da Interface Gráfica WPF no README.md
 
 - **Contexto e Motivação:**

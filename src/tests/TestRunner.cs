@@ -200,6 +200,7 @@ namespace Otimizador.Tests
 
             CatalogoTests.Run(runner, repoRoot);
             SegurancaTests.Run(runner);
+            AppRemovalTests.Run(runner);
             MotorTests.Run(runner, repoRoot);
             RegistroTests.Run(runner);
             LimpezaTests.Run(runner);

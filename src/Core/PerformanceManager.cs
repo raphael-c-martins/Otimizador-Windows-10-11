@@ -207,21 +207,9 @@ namespace Otimizador.Core
 
             string exe;
             string arguments;
-            Match quoted = Regex.Match(unStr, "^\\s*\"([^\"]+)\"\\s*(.*)$");
-            if (quoted.Success)
+            if (!AppManager.TryParseUninstallCommand(unStr, out exe, out arguments))
             {
-                exe = quoted.Groups[1].Value;
-                arguments = quoted.Groups[2].Value;
-            }
-            else
-            {
-                Match plain = Regex.Match(unStr, @"^\s*(\S+)\s*(.*)$");
-                if (!plain.Success)
-                {
-                    throw new InvalidOperationException(string.Format("Comando de desinstalação do Edge em formato inesperado: '{0}'.", unStr));
-                }
-                exe = plain.Groups[1].Value;
-                arguments = plain.Groups[2].Value;
+                throw new InvalidOperationException(string.Format("Comando de desinstalação do Edge em formato inesperado: '{0}'.", unStr));
             }
 
             string[] edgeRoots = new string[]
@@ -386,6 +374,63 @@ namespace Otimizador.Core
                     inUse++;
                 }
             }
+        }
+
+        public static bool DeleteDirectoryTreeSafely(string targetDir, string[] allowedRoots, out int inUseCount)
+        {
+            inUseCount = 0;
+            if (string.IsNullOrWhiteSpace(targetDir) || allowedRoots == null || !Path.IsPathRooted(targetDir))
+            {
+                return false;
+            }
+
+            string fullDir;
+            try
+            {
+                fullDir = Path.GetFullPath(targetDir);
+            }
+            catch
+            {
+                return false;
+            }
+
+            bool isAllowed = false;
+            foreach (string root in allowedRoots)
+            {
+                if (!string.IsNullOrWhiteSpace(root) && TestPathIsWithin(fullDir, root))
+                {
+                    isAllowed = true;
+                    break;
+                }
+            }
+            if (!isAllowed) return false;
+            if (!Directory.Exists(fullDir)) return true;
+
+            try
+            {
+                if (SystemInfo.IsReparsePoint(fullDir))
+                {
+                    // Remove apenas o ponto de junção/symlink sem seguir o destino
+                    Directory.Delete(fullDir, false);
+                    return !Directory.Exists(fullDir);
+                }
+
+                DeleteDirectoryContentsSafely(new DirectoryInfo(fullDir), ref inUseCount);
+                try
+                {
+                    Directory.Delete(fullDir, false);
+                }
+                catch
+                {
+                    if (inUseCount == 0) inUseCount = 1;
+                }
+            }
+            catch
+            {
+                if (inUseCount == 0) inUseCount = 1;
+            }
+
+            return !Directory.Exists(fullDir);
         }
 
         public static void ClearSystemTempFiles(string[] protectedPaths, string[] tempRoots = null)

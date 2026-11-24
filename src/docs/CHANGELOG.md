@@ -4,6 +4,18 @@ Log oficial de todas as mudanças notáveis, correções de bugs e evoluções a
 
 ---
 
+## [v15.1.4 - Ordem de Desprovisionamento Appx, Remoção Completa do OneDrive e Diagnóstico WinGet] - 2026-11-24
+### Corrigido & Melhorado
+- **Desprovisionamento antes da remoção instalada (`AppManager.cs`):** `RemoveAppByDefinition` passa a desprovisionar os pacotes Appx (`DeprovisionPackageForAllUsersAsync` / `dism.exe`) **antes** de chamar `RemovePackageAsync(..., RemoveForAllUsers)`, evitando que o Windows remova arquivos/manifestos do disco antes do DISM e elimine falsos erros em cascata com códigos `2` (`ERROR_FILE_NOT_FOUND`) e `3` (`ERROR_PATH_NOT_FOUND`).
+- **Classificação honesta de stubs/órfãos no DISM (`AppManager.cs`):** falhas WinRT passam a registrar detalhe em nível `INFO` antes do fallback para `dism.exe`, e códigos DISM `2` e `3` são avaliados após a remoção das cópias instaladas — gerando `AVISO` apenas quando nenhuma cópia instalada falhou.
+- **Remoção confiável do OneDrive em qualquer contexto (`OneDriveManager.cs`, `PerformanceManager.cs`, `OptimizationEngine.cs`):**
+  - Detecção de instalações por máquina (`HKLM\...\Uninstall\OneDriveSetup.exe` e `Program Files\Microsoft OneDrive` com `/uninstall /allusers`), por usuário (`HKU\<SID>` / `HKCU` e `AppData\Local\Microsoft\OneDrive`), Appx (`*OneDriveSync*`), entradas `Run` e `WinGet` (`Microsoft.OneDrive`).
+  - Encerramento prévio de processos auxiliares (`OneDriveStandaloneUpdater`, `FileCoAuth`, `OneDrive.Sync.Service`, `OneDriveSetup`) e limpeza complementar segura quando o programa é elevado com outra conta administrativa ou quando o desinstalador oficial retorna erro (ex.: `-2147219808`), removendo binários do cliente, tarefas agendadas, atalho, entrada `Run` e pino do Explorer sem tocar nos arquivos pessoais da pasta `OneDrive`.
+- **Diagnóstico WinGet (`AppManager.cs`):** `InvokeWinGetUninstallWithStatus` captura `StdOut`/`StdErr` em UTF-8 para registrar o código hexadecimal e a última linha diagnóstica em falhas reais (ex.: `0x8A150030`) e evita reportar `"não instalado (nada a remover)"` após aviso de falha.
+- **Testes:** adicionada suíte `AppRemovalTests.cs` elevando o total para 60 verificações automatizadas e recompilado `Otimizador-Windows.exe` na raiz.
+
+---
+
 ## [v15.1.3 - Polling na Confirmação WMI e Tratamento de Ponto Recente Existente] - 2026-11-13
 ### Corrigido & Melhorado
 - **Retentativa (`WaitForRestorePoint`) na confirmação via WMI (`BackupManager.cs`):** o provedor WMI `SystemRestore` pode levar alguns segundos após `CreateRestorePoint` retornar `0` para expor o snapshot recém-criado; a verificação agora realiza até 5 leituras progressivas (até 9 s quando necessário) antes de concluir que o ponto não foi gravado.
